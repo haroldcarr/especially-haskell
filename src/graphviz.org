@@ -14,7 +14,7 @@ tags: haskell, graphviz
 #+END_HTML
 
 # Created       : 2014 Feb 26 (Wed) 18:54:30 by Harold Carr.
-Last Modified : 2015 Oct 23 (Fri) 15:10:59 by Harold Carr.
+Last Modified : 2015 Oct 23 (Fri) 16:20:29 by Harold Carr.
 
 ------------------------------------------------------------------------------
 * graphviz
@@ -37,7 +37,7 @@ examples.  The purpose of this post is to add examples to the pool.
 
 This post uses the following extension and imports:
 
-#+INCLUDE: "./graphviz.hs" :lines "1-12" src haskell
+#+INCLUDE: "./graphviz.hs.org::*setup" :only-contents t
 
 ------------------------------------------------------------------------------
 * creating dot graphs from Data.Graph.Inductive input
@@ -50,11 +50,11 @@ When searching for =Data.GraphViz= examples one of the most useful I found was
 It shows how to turn [[http://hackage.haskell.org/package/fgl-5.4.2.4/docs/Data-Graph-Inductive.html][Data.Graph.Inductive]] graphs into dot graphs.
 The input:
 
-#+INCLUDE: "./graphviz.hs" :lines "14-35" src haskell
+#+INCLUDE: "./graphviz.hs.org::*ex1" :only-contents t
 
 along with some color helper functions:
 
-#+INCLUDE: "./graphviz.hs" :lines "37-46" src haskell
+#+INCLUDE: "./graphviz.hs.org::*helper" :only-contents t
 
 results in:
 
@@ -72,7 +72,7 @@ several Haskell [[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/D
 [[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/Data-GraphViz-Types-Monadic.html][monadic]].
 The =monadic= representation looks very similar to [[http://www.graphviz.org/content/dot-language][dot notation]]:
 
-#+INCLUDE: "./graphviz.hs" :lines "48-95" src haskell
+#+INCLUDE: "./graphviz.hs.org::*ex3" :only-contents t
 
 The above results in (a diagram for the beginnings of a simple wire
 protocol with possibly fragmented request messages and single response
@@ -153,7 +153,7 @@ which is not what I'm after.
 
 Since all of Haskell is available to build the graph, one can do:
 
-#+INCLUDE: "./graphviz.hs" :lines "121-146" src haskell
+#+INCLUDE: "./graphviz.hs.org::*dry" :only-contents t
 
 This results in the exact same output as the manually editted graph:
 
@@ -175,7 +175,7 @@ important piece being =runGraphvizCommand= and =addExtension=):
 
 and use the utilities via:
 
-#+INCLUDE: "./graphviz.hs" :lines "148-154"src haskell
+#+INCLUDE: "./graphviz.hs.org::*main " :only-contents t
 
 ------------------------------------------------------------------------------
 * summary
