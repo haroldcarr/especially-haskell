@@ -1,0 +1,198 @@
+#+TITLE:       using graphviz via haskell
+#+AUTHOR:      Harold Carr
+#+DESCRIPTION: using graphviz via haskell
+#+PROPERTY:    tangle graphviz.hs
+#+OPTIONS:     num:nil toc:t
+#+OPTIONS:     skip:nil author:nil email:nil creator:nil timestamp:nil
+#+INFOJS_OPT:  view:nil toc:t ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+
+#+BEGIN_HTML
+---
+title: using graphviz via haskell
+tags: haskell, graphviz
+---
+#+END_HTML
+
+# Created       : 2014 Feb 26 (Wed) 18:54:30 by Harold Carr.
+Last Modified : 2015 Oct 23 (Fri) 15:10:59 by Harold Carr.
+
+------------------------------------------------------------------------------
+* graphviz
+
+One of the tools I use for drawing graphs is =dot= from [[http://www.graphviz.org/][Graphviz]].
+Recently I was drawing a series of diagrams that have mostly identical
+parts.  It was error-prone and a pain to keep the identical parts in
+sync between the multiple =*.dot= files.  I found [[http://www.haskell.org/][Haskell]]'s
+[[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/Data-GraphViz.html][Data.GraphViz]] package to be the solution.
+
+The documentation for that package is great, but it needs a few more
+examples.  The purpose of this post is to add examples to the pool.
+
+#+BEGIN_HTML
+<!-- MORE -->
+#+END_HTML
+
+# --------------------------------------------------
+** setup
+
+This post uses the following extension and imports:
+
+#+INCLUDE: "./graphviz.hs" :lines "1-12" src haskell
+
+------------------------------------------------------------------------------
+* creating dot graphs from Data.Graph.Inductive input
+
+When searching for =Data.GraphViz= examples one of the most useful I found was
+
+- [[http://speely.wordpress.com/2010/09/17/haskell-graphs-and-underpants/]]
+- [[https://github.com/mcandre/mcandre/blob/master/haskell/gnomes.hs]] --- more up-to-date
+
+It shows how to turn [[http://hackage.haskell.org/package/fgl-5.4.2.4/docs/Data-Graph-Inductive.html][Data.Graph.Inductive]] graphs into dot graphs.
+The input:
+
+#+INCLUDE: "./graphviz.hs" :lines "14-35" src haskell
+
+along with some color helper functions:
+
+#+INCLUDE: "./graphviz.hs" :lines "37-46" src haskell
+
+results in:
+
+#+CAPTION: &nbsp;
+[[file:ex1.png]]
+
+------------------------------------------------------------------------------
+* creating dot graphs from a Data.GraphViz Haskell representation
+
+Besides supporting =Data.Graph.Inductive=, =Data.GraphViz= provides
+several Haskell [[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/Data-GraphViz-Types.html][representations]]:
+[[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/Data-GraphViz-Types-Canonical.html][canonical]],
+[[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/Data-GraphViz-Types-Generalised.html][generalized]],
+[[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/Data-GraphViz-Types-Graph.html][graph]] and
+[[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/Data-GraphViz-Types-Monadic.html][monadic]].
+The =monadic= representation looks very similar to [[http://www.graphviz.org/content/dot-language][dot notation]]:
+
+#+INCLUDE: "./graphviz.hs" :lines "48-95" src haskell
+
+The above results in (a diagram for the beginnings of a simple wire
+protocol with possibly fragmented request messages and single response
+messages):
+
+#+CAPTION: &nbsp;
+[[file:ex2.png]]
+
+------------------------------------------------------------------------------
+* minor limitation and workaround
+
+Quite often I create diagrams that do not use clustering but have
+different node types, each type with a distinct shape, size and color.
+In dot, one can factor the shared attributes via =subgraph=:
+
+#+BEGIN_EXAMPLE
+digraph ex3 {
+    graph [rankdir=LR];
+    subgraph {
+        node [shape=doublecircle,fixedsize=true,width=1,style=filled,color="#7f6c8a"];
+        Open [label=open];
+        Closed [label=closed];
+    }
+    subgraph {
+        node [shape=circle,fixedsize=true,width=1,style=filled,color="#7f6c8a"];
+        ClosedWaitingAck [label="clsd waiting\nACK"];
+    }
+    subgraph {
+        node [shape=box,width=1,style=filled,color="#e2ceb3"];
+        cancel [label=CANCEL];
+        cancelAck [label=CANCEL_ACK];
+    }
+    Open -> cancel;
+    cancel -> ClosedWaitingAck;
+    ClosedWaitingAck -> cancelAck;
+    cancelAck -> Closed;
+}
+#+END_EXAMPLE
+
+which results in:
+
+#+CAPTION: &nbsp;
+[[file:ex3.dot.png]]
+
+=Data.GraphViz= supports =subgraph= for =Data.Graph.Inductive= graphs
+via the =isDotCluster= setting in =GraphvizParams=.
+
+It also supports =subgraph= for =Data.GraphViz.Types= =Canonical= and
+=Generalised= graphs via setting =isCluster= to =False= for their
+appropriate =DotSubGraph= types.
+
+However, =Graph= and =Monadic= do not (yet) have a setting that
+supports =subgraph=.
+
+The dot output above was produced from:
+
+#+INCLUDE: "./graphviz.hs" :lines "97-119" src haskell
+
+which almost has what I want as output:
+
+#+BEGIN_EXAMPLE
+digraph exe {
+    graph [rankdir=LR];
+    subgraph cluster_0 {
+        ...
+#+END_EXAMPLE
+
+Manually removing the =cluster_N= after =subgraph= gives me what I want.
+
+If =cluster_N= is not removed what results is:
+
+#+CAPTION: &nbsp;
+[[file:ex3.png]]
+
+which is not what I'm after.
+
+** workaround
+
+Since all of Haskell is available to build the graph, one can do:
+
+#+INCLUDE: "./graphviz.hs" :lines "121-146" src haskell
+
+This results in the exact same output as the manually editted graph:
+
+#+CAPTION: &nbsp;
+[[file:ex4.png]]
+
+I also use the above "trick" to factor out common parts of graphs and
+share them (my original motivation for using =Data.GraphViz= instead
+of manually writing =dot=).
+
+------------------------------------------------------------------------------
+* creating images
+
+Images for these examples can be created using the utilities (the
+important piece being =runGraphvizCommand= and =addExtension=):
+
+#+INCLUDE: "./WriteRunDot.hs" src haskell
+# #+INCLUDE: "./WriteRunDot.hs" example
+
+and use the utilities via:
+
+#+INCLUDE: "./graphviz.hs" :lines "148-154"src haskell
+
+------------------------------------------------------------------------------
+* summary
+
+Using =Data.GraphViz= I can now write dot diagrams but use Haskell to
+factor out the common parts of similar diagrams (not shown in the
+examples above).  Of course, I also have the full power of Haskell
+available.  And, when using a interactive Haskell environment (see [[http://tim.dysinger.net/posts/2014-02-18-haskell-with-emacs.html][Tim
+Dysinger's emacs environment]]), the IDE catches type errors, syntax
+errors, duplicates, etc., while your write.  A great improvement over
+manually writing and maintaining =*.dot= files.
+
+# --------------------------------------------------
+** source code
+
+The emacs org-mode literate source code of this article is available at:
+
+- [[https://github.com/haroldcarr/learn-haskell-coq-ml-etc/blob/master/haskell/paper/haroldcarr/graphviz/2014-02-28-using-graphviz-via-haskell/2014-02-28-using-graphviz-via-haskell.org]]
+
+# End of file.
