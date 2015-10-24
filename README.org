@@ -1,0 +1,5 @@
+I have this idea for a combination book, website, blog, linked-data of
+functional programming/Haskell techniques.
+
+Right now this repo just has experiments for the mechanics of putting it
+together, not the actual content itself (yet).
