@@ -52,21 +52,21 @@ ex2 = digraph (Str "ex2") $ do
     graphAttrs [RankDir FromLeft]
     nodeAttrs  [style filled]
 
-    cluster (Int 0) $ do
+    cluster (Num $ Int 0) $
         node "Ready"               [ textLabel "ready"
-                                   , shape DoubleCircle, myColor 1, FixedSize True, Width 1]
-    cluster (Int 1) $ do
+                                   , shape DoubleCircle, myColor 1, FixedSize SetNodeSize, Width 1]
+    cluster (Num $ Int 1) $ do
         graphAttrs [textLabel "active"]
         node "Open"                [ textLabel "open"
-                                   , shape       Circle, myColor 2, FixedSize True, Width 1]
+                                   , shape       Circle, myColor 2, FixedSize SetNodeSize, Width 1]
         node "OpenExpectFragment"  [ textLabel "open expect\nfragment"
-                                   , shape       Circle, myColor 2, FixedSize True, Width 1]
+                                   , shape       Circle, myColor 2, FixedSize SetNodeSize, Width 1]
         node "HalfClosed"          [ textLabel "half-clsd"
-                                   , shape       Circle, myColor 2, FixedSize True, Width 1]
+                                   , shape       Circle, myColor 2, FixedSize SetNodeSize, Width 1]
         node "endMessage?"         [ textLabel "end req?"
-                                   , shape DiamondShape, myColor 4, FixedSize True, Width 1.25, Height 1.25]
+                                   , shape DiamondShape, myColor 4, FixedSize SetNodeSize, Width 1.25, Height 1.25]
         node "fragmentEndMessage?" [ textLabel "end req?"
-                                   , shape DiamondShape, myColor 4, FixedSize True, Width 1.25, Height 1.25]
+                                   , shape DiamondShape, myColor 4, FixedSize SetNodeSize, Width 1.25, Height 1.25]
         node "requestFragment"     [ textLabel "FRAGMENT"
                                    , shape     BoxShape, myColor 3]
 
@@ -78,10 +78,10 @@ ex2 = digraph (Str "ex2") $ do
         edge "fragmentEndMessage?"     "OpenExpectFragment"  [textLabel "false"]
         edge "fragmentEndMessage?"     "HalfClosed"          [textLabel "true"]
 
-    cluster (Int 2) $ do
+    cluster (Num $ Int 2) $ do
         graphAttrs [textLabel "done"]
         node "Closed"              [ textLabel "closed"
-                                   , shape DoubleCircle, myColor 1, FixedSize True, Width 1]
+                                   , shape DoubleCircle, myColor 1, FixedSize SetNodeSize, Width 1]
 
     -- outside the box(es)
     node "request"                 [ textLabel "REQUEST"
@@ -100,16 +100,16 @@ ex3 = digraph (Str "ex3") $ do
 
     graphAttrs [RankDir FromLeft]
 
-    cluster (Int 0) $ do
-        nodeAttrs               [shape DoubleCircle, FixedSize True, Width 1, style filled, myColor 1]
+    cluster (Num $ Int 0) $ do
+        nodeAttrs               [shape DoubleCircle, FixedSize SetNodeSize, Width 1, style filled, myColor 1]
         node "Open"             [textLabel "open"]
         node "Closed"           [textLabel "closed"]
 
-    cluster (Int 1) $ do
-        nodeAttrs               [shape       Circle, FixedSize True, Width 1, style filled, myColor 1]
+    cluster (Num $ Int 1) $ do
+        nodeAttrs               [shape       Circle, FixedSize SetNodeSize, Width 1, style filled, myColor 1]
         node "ClosedWaitingAck" [textLabel "clsd waiting\nACK"]
 
-    cluster (Int 2) $ do
+    cluster (Num $ Int 2) $ do
         nodeAttrs               [shape     BoxShape,                 Width 1, style filled, myColor 3]
         node "cancel"           [textLabel "CANCEL"]
         node "cancelAck"        [textLabel "CANCEL_ACK"]
@@ -120,10 +120,10 @@ ex3 = digraph (Str "ex3") $ do
     "cancelAck"        --> "Closed"
 -- org* dry
 doubleCircle :: n -> Text -> Dot n
-doubleCircle n l = node n [textLabel l, shape DoubleCircle, FixedSize True, Width 1, style filled, myColor 1]
+doubleCircle n l = node n [textLabel l, shape DoubleCircle, FixedSize SetNodeSize, Width 1, style filled, myColor 1]
 
 circle       :: n -> Text -> Dot n
-circle       n l = node n [textLabel l, shape       Circle, FixedSize True, Width 1, style filled, myColor 1]
+circle       n l = node n [textLabel l, shape       Circle, FixedSize SetNodeSize, Width 1, style filled, myColor 1]
 
 rectangle    :: n -> Text -> Dot n
 rectangle    n l = node n [textLabel l, shape     BoxShape,                 Width 1, style filled, myColor 3]

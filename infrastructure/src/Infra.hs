@@ -17,6 +17,7 @@ orgIt = P.unlines . go False . P.lines
     go _ []                  = [endSrc]
     go trailerNeededP (l:ls) =
         if "-- org*" `L.isPrefixOf` l
+           -- TODO The else/"" causes an extra blank line before the first tag.
            then (if trailerNeededP then endSrc else "") : drop 6 l : beginSrc : go True ls
            else l : go trailerNeededP ls
 

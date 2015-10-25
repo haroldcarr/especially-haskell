@@ -4,7 +4,6 @@ synopsis:            book/web/blog infrastructure for now
 description:         see README
 homepage:            https://github.com/haroldcarr/especially-haskell
 license:             BSD3
-license-file:        LICENSE
 author:              Harold Carr
 maintainer:          harold.carr@gmail.com
 copyright:           2010 Harold Carr
