@@ -1,3 +1,4 @@
+-- org* setup
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -10,7 +11,7 @@ import           Data.GraphViz.Types.Monadic
 import           Data.Text.Lazy                    as L
 import           Data.Word
 import           WriteRunDot
-
+-- org* ex1
 ex1 :: Gr Text Text
 ex1 = mkGraph [ (1,"one")
               , (3,"three")
@@ -33,7 +34,7 @@ ex1Params = nonClusteredParams { globalAttributes = ga
                           , style     filled
                           ]
              ]
-
+-- org* helper
 -- http://www.colorcombos.com/color-schemes/2025/ColorCombo2025.html
 myColorCL :: Word8 -> ColorList
 myColorCL n | n == 1 = c (RGB 127 108 138)
@@ -93,7 +94,7 @@ ex2 = digraph (Str "ex2") $ do
 
     "HalfClosed" --> "response"
     "response"   --> "Closed"
-
+-- org* ex3
 ex3 :: G.DotGraph L.Text
 ex3 = digraph (Str "ex3") $ do
 
@@ -117,7 +118,7 @@ ex3 = digraph (Str "ex3") $ do
     "cancel"           --> "ClosedWaitingAck"
     "ClosedWaitingAck" --> "cancelAck"
     "cancelAck"        --> "Closed"
-
+-- org* dry
 doubleCircle :: n -> Text -> Dot n
 doubleCircle n l = node n [textLabel l, shape DoubleCircle, FixedSize True, Width 1, style filled, myColor 1]
 
@@ -144,7 +145,7 @@ ex4 = digraph (Str "ex4") $ do
     "cancel"           --> "ClosedWaitingAck"
     "ClosedWaitingAck" --> "cancelAck"
     "cancelAck"        --> "Closed"
-
+-- org* main
 main :: IO ()
 main = do
     doDots [ ("ex1" , graphToDot ex1Params ex1) ]
