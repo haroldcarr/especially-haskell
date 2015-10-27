@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Data.List          as L (drop, isPrefixOf)
+import           Data.List          as L (isPrefixOf)
 import           Prelude            as P
 import           System.Environment (getArgs)
 
@@ -16,9 +16,9 @@ orgIt = P.unlines . go False . P.lines
     endSrc                   = "#+END_SRC"
     go _ []                  = [endSrc]
     go trailerNeededP (l:ls) =
-        if "-- org*" `L.isPrefixOf` l
-           -- TODO The else/"" causes an extra blank line before the first tag.
-           then (if trailerNeededP then endSrc else "") : drop 6 l : beginSrc : go True ls
+        let o = drop 6 l : beginSrc : go True ls
+        in if "-- org*" `L.isPrefixOf` l
+           then if trailerNeededP then endSrc : o else o
            else l : go trailerNeededP ls
 
 main :: IO ()
