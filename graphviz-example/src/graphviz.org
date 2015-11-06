@@ -14,7 +14,7 @@ tags: haskell, graphviz
 #+END_HTML
 
 # Created       : 2014 Feb 26 (Wed) 18:54:30 by Harold Carr.
-Last Modified : 2015 Oct 23 (Fri) 16:20:29 by Harold Carr.
+Last Modified : 2015 Nov 06 (Fri) 13:26:28 by Harold Carr.
 
 ------------------------------------------------------------------------------
 * graphviz
@@ -37,7 +37,7 @@ examples.  The purpose of this post is to add examples to the pool.
 
 This post uses the following extension and imports:
 
-#+INCLUDE: "./graphviz.hs.org::*setup" :only-contents t
+#+INCLUDE: "../.generated/graphviz.hs.org::*setup" :only-contents t
 
 ------------------------------------------------------------------------------
 * creating dot graphs from Data.Graph.Inductive input
@@ -50,16 +50,16 @@ When searching for =Data.GraphViz= examples one of the most useful I found was
 It shows how to turn [[http://hackage.haskell.org/package/fgl-5.4.2.4/docs/Data-Graph-Inductive.html][Data.Graph.Inductive]] graphs into dot graphs.
 The input:
 
-#+INCLUDE: "./graphviz.hs.org::*ex1" :only-contents t
+#+INCLUDE: "../.generated/graphviz.hs.org::*ex1" :only-contents t
 
 along with some color helper functions:
 
-#+INCLUDE: "./graphviz.hs.org::*helper" :only-contents t
+#+INCLUDE: "../.generated/graphviz.hs.org::*helper" :only-contents t
 
 results in:
 
 #+CAPTION: &nbsp;
-[[file:ex1.png]]
+[[file:../.generated/ex1.png]]
 
 ------------------------------------------------------------------------------
 * creating dot graphs from a Data.GraphViz Haskell representation
@@ -72,14 +72,14 @@ several Haskell [[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/D
 [[http://hackage.haskell.org/package/graphviz-2999.16.0.0/docs/Data-GraphViz-Types-Monadic.html][monadic]].
 The =monadic= representation looks very similar to [[http://www.graphviz.org/content/dot-language][dot notation]]:
 
-#+INCLUDE: "./graphviz.hs.org::*ex3" :only-contents t
+#+INCLUDE: "../.generated/graphviz.hs.org::*ex2" :only-contents t
 
 The above results in (a diagram for the beginnings of a simple wire
 protocol with possibly fragmented request messages and single response
 messages):
 
 #+CAPTION: &nbsp;
-[[file:ex2.png]]
+[[file:../.generated/ex2.png]]
 
 ------------------------------------------------------------------------------
 * minor limitation and workaround
@@ -88,34 +88,12 @@ Quite often I create diagrams that do not use clustering but have
 different node types, each type with a distinct shape, size and color.
 In dot, one can factor the shared attributes via =subgraph=:
 
-#+BEGIN_EXAMPLE
-digraph ex3 {
-    graph [rankdir=LR];
-    subgraph {
-        node [shape=doublecircle,fixedsize=true,width=1,style=filled,color="#7f6c8a"];
-        Open [label=open];
-        Closed [label=closed];
-    }
-    subgraph {
-        node [shape=circle,fixedsize=true,width=1,style=filled,color="#7f6c8a"];
-        ClosedWaitingAck [label="clsd waiting\nACK"];
-    }
-    subgraph {
-        node [shape=box,width=1,style=filled,color="#e2ceb3"];
-        cancel [label=CANCEL];
-        cancelAck [label=CANCEL_ACK];
-    }
-    Open -> cancel;
-    cancel -> ClosedWaitingAck;
-    ClosedWaitingAck -> cancelAck;
-    cancelAck -> Closed;
-}
-#+END_EXAMPLE
+#+INCLUDE: "./ex3.dot" example
 
 which results in:
 
 #+CAPTION: &nbsp;
-[[file:ex3.dot.png]]
+[[file:../.generated/ex3-dot.png]]
 
 =Data.GraphViz= supports =subgraph= for =Data.Graph.Inductive= graphs
 via the =isDotCluster= setting in =GraphvizParams=.
@@ -129,7 +107,7 @@ supports =subgraph=.
 
 The dot output above was produced from:
 
-#+INCLUDE: "./graphviz.hs" :lines "97-119" src haskell
+#+INCLUDE: "../.generated/graphviz.hs.org::*ex3" :only-contents t
 
 which almost has what I want as output:
 
@@ -145,7 +123,7 @@ Manually removing the =cluster_N= after =subgraph= gives me what I want.
 If =cluster_N= is not removed what results is:
 
 #+CAPTION: &nbsp;
-[[file:ex3.png]]
+[[file:../.generated/ex3.png]]
 
 which is not what I'm after.
 
@@ -153,12 +131,12 @@ which is not what I'm after.
 
 Since all of Haskell is available to build the graph, one can do:
 
-#+INCLUDE: "./graphviz.hs.org::*dry" :only-contents t
+#+INCLUDE: "../.generated/graphviz.hs.org::*dry" :only-contents t
 
 This results in the exact same output as the manually editted graph:
 
 #+CAPTION: &nbsp;
-[[file:ex4.png]]
+[[file:../.generated/ex4.png]]
 
 I also use the above "trick" to factor out common parts of graphs and
 share them (my original motivation for using =Data.GraphViz= instead
@@ -175,7 +153,7 @@ important piece being =runGraphvizCommand= and =addExtension=):
 
 and use the utilities via:
 
-#+INCLUDE: "./graphviz.hs.org::*main " :only-contents t
+#+INCLUDE: "../.generated/graphviz.hs.org::*main " :only-contents t
 
 ------------------------------------------------------------------------------
 * summary

@@ -8,8 +8,9 @@ import           Data.GraphViz
 import           Data.GraphViz.Attributes.Complete
 import           Data.GraphViz.Types.Generalised   as G
 import           Data.GraphViz.Types.Monadic
-import           Data.Text.Lazy                    as L
+import           Data.Text.Lazy                    as L hiding (head, length)
 import           Data.Word
+import           System.Environment                (getArgs)
 import           WriteRunDot
 -- org* ex1
 ex1 :: Gr Text Text
@@ -45,7 +46,7 @@ myColorCL n | n == 1 = c (RGB 127 108 138)
 
 myColor :: Word8 -> Attribute
 myColor n = Color $ myColorCL n
-
+-- org* ex2
 ex2 :: G.DotGraph L.Text
 ex2 = digraph (Str "ex2") $ do
 
@@ -148,9 +149,10 @@ ex4 = digraph (Str "ex4") $ do
 -- org* main
 main :: IO ()
 main = do
-    doDots "/tmp" [ ("ex1" , graphToDot ex1Params ex1) ]
-    doDots "/tmp" [ ("ex2" , ex2)
-                  , ("ex3" , ex3)
-                  , ("ex4" , ex4)
-                  ]
-
+    as <- getArgs
+    let dir = if length as /= 1 then "/tmp" else head as
+    doDots dir [ ("ex1" , graphToDot ex1Params ex1) ]
+    doDots dir [ ("ex2" , ex2)
+               , ("ex3" , ex3)
+               , ("ex4" , ex4)
+               ]

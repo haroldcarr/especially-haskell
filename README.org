@@ -3,3 +3,20 @@ functional programming/Haskell techniques.
 
 Right now this repo just has experiments for the mechanics of putting it
 together, not the actual content itself (yet).
+
+* Usage (kludgy at this time)
+
+#+BEGIN_EXAMPLE
+# fresh shell
+. hcRmNixFromPath.sh
+makefile
+
+# new fresh shell
+make workaround
+
+# run org-export manually
+#+END_EXAMPLE
+
+* TODO fix nix/stack collision
+* TODO auto create .generated directories
+* TODO run org export from makefile
