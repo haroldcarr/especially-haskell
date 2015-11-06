@@ -148,8 +148,9 @@ ex4 = digraph (Str "ex4") $ do
 -- org* main
 main :: IO ()
 main = do
-    doDots [ ("ex1" , graphToDot ex1Params ex1) ]
-    doDots [ ("ex2" , ex2)
-           , ("ex3" , ex3)
-           , ("ex4" , ex4)
-           ]
+    doDots "/tmp" [ ("ex1" , graphToDot ex1Params ex1) ]
+    doDots "/tmp" [ ("ex2" , ex2)
+                  , ("ex3" , ex3)
+                  , ("ex4" , ex4)
+                  ]
+
