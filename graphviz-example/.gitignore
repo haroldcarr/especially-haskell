@@ -1,3 +1,7 @@
+*.html
+*.png
+*.pdf
+*.tex
 app
 test
 
