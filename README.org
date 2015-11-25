@@ -9,7 +9,7 @@ together, not the actual content itself (yet).
 #+BEGIN_EXAMPLE
 # fresh shell
 . hcRmNixFromPath.sh
-makefile
+make
 
 # new fresh shell
 make workaround
