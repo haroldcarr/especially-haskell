@@ -20,8 +20,8 @@ together, not the actual content itself (yet).
 * Build
 
 #+BEGIN_EXAMPLE
-cd infra; stack build
-cd graphviz-example; make clean all
+pushd infra; stack build; popd
+pushd content/graphviz-example; make clean all; popd
 #+END_EXAMPLE
 
 * -TODO-
