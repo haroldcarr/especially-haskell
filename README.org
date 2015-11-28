@@ -7,11 +7,6 @@ together, not the actual content itself (yet).
 * Usage
 
 #+BEGIN_EXAMPLE
-make clean
-make
-#+END_EXAMPLE
-
-#+BEGIN_EXAMPLE
                                 +-----------+         +---------------+         +---------+
 +---------------------+         | rdf       |<--------| rdr extracter |-------->|         |
 |                     |-------->| store     |         +---------------+         |         |
@@ -22,6 +17,14 @@ make
                                 +-----------+         +---------------+         +---------+
 #+END_EXAMPLE
 
-* TODO parameterize Makefile
-* TODO auto create .generated directories
-* TODO use Shake instead of Make
+* Build
+
+#+BEGIN_EXAMPLE
+make clean
+make
+#+END_EXAMPLE
+
+* -TODO-
+- parameterize Makefile
+- auto create .generated directories
+- use Shake instead of Make
