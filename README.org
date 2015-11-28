@@ -20,11 +20,10 @@ together, not the actual content itself (yet).
 * Build
 
 #+BEGIN_EXAMPLE
-make clean
-make
+cd infra; stack build
+cd graphviz-example; make clean all
 #+END_EXAMPLE
 
 * -TODO-
-- parameterize Makefile
-- auto create .generated directories
+- auto create '.generated' directories
 - use Shake instead of Make
