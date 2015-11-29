@@ -1,0 +1,315 @@
+#+TITLE:       Practical Recursion Schemes
+#+AUTHOR:      Jared Tobin (condensed by Harold Carr)
+#+DESCRIPTION: practical recursion schemes
+#+OPTIONS:     num:nil toc:t
+#+OPTIONS:     skip:nil author:nil email:nil creator:nil timestamp:nil
+#+INFOJS_OPT:  view:nil toc:t ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+
+------------------------------------------------------------------------------
+* intro : Edward Kmett’s recursion-schemes library
+
+key patterns
+- factoring recursion out of data types using pattern functors and a fixed-point wrapper
+  - benefits: ability to reason about recursion and base structures separately
+- using =Foldable= & =Unfoldable= classes
+- understanding the =Base= type family
+
+use-case : "refactor recusion" : help see similarities in structure between domains
+
+requirements
+- GHC 7.10.2
+- [[https://hackage.haskell.org/package/recursion-schemes-4.1.2]]
+  - Data.Functor.Foldable
+- data-ordlist-0.4.7.0
+  - Data.List.Ordered
+  - used in example, not fundamental
+
+#+INCLUDE: "../.generated/PRS.hs.org::*setup" :only-contents t
+
+This technique is applicable to data types that have a recursive structure (e.g., Lists, trees, nats)
+
+#+INCLUDE: "../.generated/PRS.hs.org::*Natural" :only-contents t
+
+"factor out" recursion by defining base structure
+- then create a different, parameterized type
+  - new parameter takes place of recursive points in original
+
+#+INCLUDE: "../.generated/PRS.hs.org::*NatF" :only-contents t
+
+the new type is often called a "pattern functor" for some other type
+
+example notation: =<Constructor>F= for pattern functors constructors
+
+example lists and trees:
+
+#+INCLUDE: "../.generated/PRS.hs.org::*ListF_TreeF" :only-contents t
+
+add recursion to pattern functors via recursive =Fix= wrapper type
+
+#+INCLUDE: "../.generated/PRS.hs.org::*Fix_NatF" :only-contents t
+
+smart constructors:
+
+#+INCLUDE: "../.generated/PRS.hs.org::*smart_constructors" :only-contents t
+
+enables:
+
+#+BEGIN_EXAMPLE
+> succ (succ (succ zero))
+Fix (SuccF (Fix (SuccF (Fix (SuccF (Fix ZeroF))))))
+#+END_EXAMPLE
+
+=Fix= definition
+
+#+BEGIN_EXAMPLE
+newtype Fix f = Fix (f (Fix f))
+
+fix :: f -> Fix f
+fix  = Fix
+
+unfix        :: Fix f -> f (Fix f)
+unfix (Fix f) = f
+#+END_EXAMPLE
+
+For given value
+- =fix= adds one level of recursion
+- =unfix= removes one level of recursion
+
+=Fix= is "generic" recursive structure
+- write recursive type without using recursion
+- use =Fix= to add recursion
+
+------------------------------------------------------------------------------
+* Recursion Schemes
+
+Wrap pattern functor in =Fix=, then recursion-schemes functions "just work".
+
+two fundamental type classes
+
+- =Foldable=
+  - types that can be "unfixed" : remove layers of recursion from instances
+  - =project= : more general form of =unfix=
+#+BEGIN_EXAMPLE
+project :: Foldable t   => t -> Base t t
+#+END_EXAMPLE
+- =Unfoldable=
+  - types that can be "fixed" : add    layers of recursion to instances
+  - =embed=                   : more general form of   =fix=
+#+BEGIN_EXAMPLE
+embed   :: Unfoldable t => Base t t -> t
+#+END_EXAMPLE
+
+------------------------------------------------------------------------------
+* =Base= and Basic Type Families
+
+=Base= appears frequently in type signatures of various recursion schemes.
+
+Type families are type-level functions
+- types as input
+- return types as output
+
+#+BEGIN_EXAMPLE
+-- fun takes type =t= as input, returns some other type
+type family Base t :: * -> *
+#+END_EXAMPLE
+
+Implementation of this function is called an instance of the family (e.g., instance for =Fix=):
+
+#+BEGIN_EXAMPLE
+type instance Base (Fix f) = f
+#+END_EXAMPLE
+
+A Type family (like =Base=) is a synonym for instances of the family.
+- e.g., mentally replace =Base (Fix f)= with =f=
+
+Instances of =Base= type family have structure like =Fix=
+- using =Base= enables recursion-schemes to work for types other than =Fix= alone
+  - without needing to manually write any instances for your own data types
+  - leverage typeclasses & type families to get by without using =Fix= at all
+    - e.g., Danny Gratzer’s recursion-schemes post
+      - [[http://jozefg.bitbucket.org/posts/2014-05-19-like-recursion-but-cooler.html]]
+- Kmettian flavour
+  - first solve most general problem
+  - then recover specific solutions
+
+=Fix f= is an instance of =Base=, =Foldable=, and =Unfoldable= for some functor =f=
+
+------------------------------------------------------------------------------
+* Useful Schemes
+
+- catamorphisms : =cata= : generalized folds.
+- anamorphisms  : =ana=  : generalized unfolds.
+- hylomorphisms : =hylo= : anamorphisms followed by catamorphisms
+                           (corecursive production followed by recursive consumption)
+- paramorphisms : =para= : generalized folds with access to input arg
+                           corresponding to most recent state of computation
+
+(see Tim Williams’s recursion schemes for discussion of other schemes
+[[http://www.timphilipwilliams.com/slides.html]])
+
+# --------------------------------------------------
+** Catamorphisms
+
+# -------------------------
+*** Use catamorphism to represent =Nat= as =Int= via summing
+
+#+INCLUDE: "../.generated/PRS.hs.org::*natsum" :only-contents t
+
+=alg= (i.e., "algebra") is local fun to define reduction semantics.
+
+NOTE: SEMANTICS ARE NOT DEFINED RECURSIVELY.
+
+Recursion in =Nat= has been decoupled and handled by =cata=.
+
+And don’t have to use =Fix= constructor.
+
+Another way to express:
+
+#+BEGIN_EXAMPLE
+{-# LANGUAGE LambdaCase #-}
+natsum :: Nat -> Int
+natsum = cata $ \case ->
+    ZeroF   -> 0
+    SuccF n -> n + 1
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+-- ‘Base t a -> a’ is the algebra
+-- ‘t’ is recursive datatype (i.e. ‘Nat’)
+-- ‘a’ is type that 't' is being reduced to
+cata :: Foldable t => (Base t a -> a) -> t -> a
+#+END_EXAMPLE
+
+=Base= is a type family, so for some =t= and =a=.
+
+=Base t a= is a synonym for some other type.
+
+To figure out what =Base t a= corresponds to for some concrete =t= and =a=:
+
+#+BEGIN_EXAMPLE
+> :kind! Base Nat Int
+Base Nat Int :: *
+= NatF Int
+#+END_EXAMPLE
+
+For the =natsum= example, algebra used with =cata= is =NatF Int -> Int=.
+
+# -------------------------
+*** catamorphism to implement =filter= for list type
+
+#+INCLUDE: "../.generated/PRS.hs.org::*filterL" :only-contents t
+
+# --------------------------------------------------
+** Anamorphisms
+
+# -------------------------
+*** anamorphism to build =Nat= from =Int=
+
+#+INCLUDE: "../.generated/PRS.hs.org::*nat" :only-contents t
+
+=coalg= (i.e., "coalgebra")
+
+Recursion is not part of the semantics.
+
+# --------------------------------------------------
+** Paramorphisms
+
+# -------------------------
+*** factorial on nat in terms of =cata=
+
+paramorphism operates on algebra that provides access to input arg
+corresponding to running state of the recursion:
+
+#+BEGIN_EXAMPLE
+para :: Foldable t => (Base t (t, a) -> a) -> t -> a
+#+END_EXAMPLE
+
+For factorial on =Nat= values
+- =t= is =Nat=
+- =a= is (say) =Integer=
+
+#+BEGIN_EXAMPLE
+> :kind! Base Nat (Nat, Int)
+Base Nat (Nat, Int) :: *
+= NatF (Nat, Int)
+#+END_EXAMPLE
+
+now implement algebra for the required type:
+
+#+INCLUDE: "../.generated/PRS.hs.org::*natfac" :only-contents t
+
+- type of algebra is =NatF (Nat, Int) -> Int=
+- value with the =Nat= type, =n=,
+  holds most recent input arg used to compute state of computation, =f=
+
+For factorial defined as
+
+#+BEGIN_EXAMPLE
+0!       = 1
+(k + 1)! = (k + 1) * k!
+#+END_EXAMPLE
+
+- =n= corresponds to =k=
+- =f= corresponds to =k!=
+
+To compute factorial of successor to =n=
+- convert =succ n= to an integer (via =natsum=) and multiply it by =f=
+
+# -------------------------
+*** =pred= on natural numbers via =para=:
+
+#+INCLUDE: "../.generated/PRS.hs.org::*natpred" :only-contents t
+
+# -------------------------
+*** =tail= on lists
+
+type of required algebra:
+
+#+BEGIN_EXAMPLE
+> :set -XRankNTypes
+> :kind! forall a b. Base (List a) (List a, b)
+forall a b. Base (List a) (List a, b) :: *
+= forall a b. ListF a (Fix (ListF a), b)
+#+END_EXAMPLE
+
+therefore:
+
+#+INCLUDE: "../.generated/PRS.hs.org::*tailL" :only-contents t
+
+# --------------------------------------------------
+** Hylomorphisms
+
+Hylomorphisms can express general computation
+— corecursive production followed by recursive consumption
+
+#+BEGIN_EXAMPLE
+hylo :: Functor f => (f b -> b) -> (a -> f a) -> a -> b
+#+END_EXAMPLE
+
+Does not require the full structure built up for i.e. =cata= and =ana=.
+
+A simple F-{co}algebras.
+
+# -------------------------
+*** hylomorphism implementation of mergesort
+
+- input : list containing orderable type
+- build balanced binary tree via anamorphism
+- fold it with a catamorphism
+  - merging lists together and sorting as it goes
+
+#+INCLUDE: "../.generated/PRS.hs.org::*mergeSort" :only-contents t
+
+Note the fusion.
+
+------------------------------------------------------------------------------
+* conclusion
+
+Haskell programming
+- embedded languages, mini-interpreters/compilers
+- recursive structure: use above
+
+[[http://www.timphilipwilliams.com/slides.html]]
+
+[[https://www.youtube.com/watch?v=Zw9KeP3OzpU]]
+
