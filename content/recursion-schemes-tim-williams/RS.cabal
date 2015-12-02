@@ -2,12 +2,6 @@ name:                RS
 version:             0.1.0.0
 synopsis:            Initial project template from stack
 description:         Please see README.md
-homepage:            http://github.com/githubuser/RS#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2010 Author Here
 category:            Web
 build-type:          Simple
 -- extra-source-files:
@@ -15,12 +9,15 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     RS
+  hs-source-dirs:      src
   build-depends:       base >= 4.7 && < 5
                      , bool-extras
                      , containers
                      , hashable
                      , hashtables
+                     , HUnit
                      , mtl
                      , parsec
+                     , test-hunit-util
                      , wl-pprint
   default-language:    Haskell2010

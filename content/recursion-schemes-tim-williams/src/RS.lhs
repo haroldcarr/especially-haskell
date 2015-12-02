@@ -1,8 +1,8 @@
 Introduction
 ============
 
-- Recursion is a programming pattern
-- There are different types of recursion
+- Recursion is a pattern
+- There are different patterns of recursion
 - "factoring" recursion : benefits
   - communicate/reason about programs
   - code/idea reuse
@@ -94,38 +94,8 @@ Third-party Hackage packages
 > import Text.Parsec.Prim (ParsecT(..))
 > import Text.PrettyPrint.Leijen (Doc, Pretty, (<+>), text, space, pretty)
 > import qualified Text.PrettyPrint.Leijen as PP
-
-Useful functions
-================
-
-- fan-out or _fork_ \footnote{defined more generally in Control.Arrow}
-
-~~~{.haskell}
-(&&&) :: (b -> c) -> (b -> c') -> b -> (c, c')
-(f &&& g) x = (f x, g x)
-~~~
-
-- fan-in \footnotemark[\value{footnote}]
-
-~~~{.haskell}
-(|||) ::: (b -> d) -> (c -> d) -> Either b c -> d
-(|||) = either
-~~~
-
-----
-
-- function product \footnotemark[\value{footnote}]
-
-~~~{.haskell}
-(***) :: (b -> c) -> (b' -> c') -> (b, b') -> (c, c')
-(f *** g) (x, y) = (f x, g y)
-~~~
-
-- generalised unzip for functors
-
-> funzip :: Functor f => f (a, b) -> (f a, f b)
-> funzip = fmap fst &&& fmap snd
-
+> import Test.HUnit
+> import qualified Test.HUnit.Util as TT
 
 Foldable
 ========
@@ -159,6 +129,67 @@ count :: Foldable t => t a -> Int
 count = getSum . foldMap (const $ Sum 1)
 ~~~
 
+----
+
+> data Tree a = E
+>             | L a
+>             | B (Tree a) a (Tree a)
+>             deriving (Eq, Foldable, Functor, Show, Traversable)
+
+> f1 :: Tree Int
+> f1 = B (B (B (L 1) 2 E)
+>         3
+>         (L 4))
+>      5
+>      E
+
+> f2 :: Tree String
+> f2 = B (B (B (L "1") "2" E)
+>         "3"
+>         (L "4"))
+>      "5"
+>      E
+
+> f3 :: Tree [Int]
+> f3 = B (B (B (L [1]) [2] E)
+>         [3]
+>         (L [4]))
+>      [5]
+>      E
+
+----
+
+Foldable typeclass operations
+=============================
+
+> f2fold      = TT.t "f2fold"      (F.fold f2)                 "12345"
+> f1foldMap   = TT.t "f1foldMap"   (foldMap show f1)           "12345"
+
+> f1foldr     = TT.t "f1foldr"     (foldr (+) 0 f1)            15
+> f1foldr2    = TT.t "f1foldr2"    (foldr ((++) . show) "" f1) "12345"
+
+> f1foldr1    = TT.t "f1foldr1"    (foldr1 (+) f1)             15
+> f1foldr1E   = TT.e "f1foldr1E"   (foldr1 (+) E)              "foldr1: empty structure"
+
+> f1toList    = TT.t "f1toList"    (F.toList f1)               [1,2,3,4,5]
+> fnullt      = TT.t "fnullt"      (null E)                    True
+> fnullf      = TT.t "fnullf"      (null (B E E E))            False
+> f1length    = TT.t "f1length"    (length f1)                 5
+> f1elemt     = TT.t "f1elemt"     (2 `elem` f1)               True
+> f1elemf     = TT.t "f1elemf"     (0 `elem` f1)               False
+> f1max       = TT.t "f1max"       (maximum f1)                5
+> f1sum       = TT.t "f1sum"       (sum f1)                    15
+> f1product   = TT.t "f1product"   (product f1)                120
+
+> -- TODO ((,) a)
+
+> f1foldrM    = TT.t "f1foldrM"    (F.foldrM (\n acc -> [n + acc]) 0 f1)   [15]
+
+> f3concat    = TT.t "f3concat"    (concat f3)                 [1,2,3,4,5]
+> f3concatMap = TT.t "f3concatMap" (concatMap show f1)         "12345"
+
+> f1findt     = TT.t "f1findt"     (F.find (==3) f1)           (Just 3)
+> f1findf     = TT.t "f1findf"     (F.find (==0) f1)           Nothing
 
 Traversable
 ===========
@@ -167,7 +198,7 @@ Traverse a structure, from left-to-right, performing an effectful action on each
 
 - Intuitively: fmap with "effects"
 - Derivable using the `DeriveTraversable` language pragma
-- See _Applicative Programming with Effects_, by McBride and Paterson [2]
+- REF: _Applicative Programming with Effects_, by McBride and Paterson [2]
 
 ~~~{.haskell}
 class (Functor t, Foldable t) => Traversable t where
@@ -198,6 +229,9 @@ sequence = mapM id
 ~~~
 sequence [putStrLn "a", putStrLn "b"] :: IO [()]
 ~~~
+
+> f1traverse  = TT.t "f1traverse"  (traverse (\x -> [show x]) f1) [B (B (B (L "1") "2" E) "3" (L "4")) "5" E]
+> f3sequenceA = TT.t "f3sequenceA" (sequenceA f3)                 [B (B (B (L 1) 2 E) 3 (L 4)) 5 E]
 
 ----
 
@@ -237,16 +271,23 @@ foldr alg (x:xs) = alg $ Just (x, foldr alg xs)
 
 ----
 
-- We could also factor out the `List a` to `Maybe (a, [a])` isomorphism
+- factor out `List a` to `Maybe (a, [a])` isomorphism
 
-> foldrM :: (Maybe (a, b) -> b) -> [a] -> b
-> foldrM alg = alg . fmap (id *** foldrM alg) . unList
+> foldrX :: (Maybe (a, b) -> b) -> [a] -> b
+> foldrX alg = alg . fmap (id *** foldrX alg) . unList
 >   where
 >     unList []     = Nothing
 >     unList (x:xs) = Just (x, xs)
 
+- Uses function product \footnote{defined more generally in Control.Arrow}
+
+~~~{.haskell}
+(***) :: (b -> c) -> (d -> e) -> (b, d) -> (c, e)
+(f *** g) (x, y) = (f x, g y)
+~~~
+
 > lengthX :: [a] -> Int
-> lengthX = foldrM alg where
+> lengthX = foldrX alg where
 >   alg :: Maybe (a, Int) -> Int
 >   alg Nothing        = 0
 >   alg (Just (_, xs)) = xs + 1
@@ -258,7 +299,7 @@ foldr alg (x:xs) = alg $ Just (x, foldr alg xs)
 
 ----
 
-The `foldrM` definition above can literally be read from the commutative diagram below.\footnote{The nodes represent types (objects) and the edges functions (morphisms).}
+The `foldrX` definition above can literally be read from the commutative diagram below.\footnote{The nodes represent types (objects) and the edges functions (morphisms).}
 
 \vspace{0.2in}
 \centerline{\resizebox{4in}{!}{%
@@ -276,10 +317,10 @@ The `foldrM` definition above can literally be read from the commutative diagram
 
 ----
 
-- `foldl` can be written in terms of `foldrM` an algebra with a higher-order carrier
+- `foldl` can be written in terms of `foldrX` an algebra with a higher-order carrier
 
 > foldlX :: forall a b. (b -> a -> b) -> [a] -> b -> b
-> foldlX f = foldrM alg where
+> foldlX f = foldrX alg where
 >   alg :: Maybe (a, b -> b) -> b -> b
 >   alg Nothing       = id
 >   alg (Just (x,xs)) = \r -> xs (f r x)
@@ -636,6 +677,13 @@ cata f &&& cata g =
            g . fmap snd )
 ~~~
 
+- Uses fan-out or _fork_ \footnote{defined more generally in Control.Arrow}
+
+~~~{.haskell}
+(&&&) :: (b -> c) -> (b -> d) -> b -> (c, d)
+(f &&& g) x = (f x, g x)
+~~~
+
 \begin{picture}(0,0)(0,0)
 \put(225,20){\includegraphics[height=0.8in]{images/banana-split.png}}
 \end{picture}
@@ -649,6 +697,10 @@ cata f &&& cata g =
 >            f (a, b) -> (a, b)
 > algProd f g = (f *** g) . funzip
 
+- generalised unzip for functors
+
+> funzip :: Functor f => f (a, b) -> (f a, f b)
+> funzip = fmap fst &&& fmap snd
 
 - can also combine two algebras over different functors but the same carrier type into a coproduct
 
@@ -656,6 +708,12 @@ cata f &&& cata g =
 >              Either (f a) (g a) -> a
 > algCoprod = (|||)
 
+- Uses fan-in \footnote{defined more generally in Control.Arrow}
+
+~~~{.haskell}
+(|||) ::: (b -> d) -> (c -> d) -> Either b c -> d
+(|||) = either
+~~~
 
 Working with fixed data-types
 =============================
@@ -1768,3 +1826,13 @@ tikz-qtree printer for annotated trees
 > pQtAnn :: Pretty a => Ann ExprF a -> Doc
 > pQtAnn = (text "\\Tree" <+>) . cata alg where
 >   alg (AnnF (d, a)) = node ".@" $ pQtAlg d <+> pretty a
+
+----
+
+> main :: IO Counts
+> main =
+>     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++ f1foldr1 ++ f1foldr1E ++
+>                            f1toList ++ fnullt ++ fnullf ++ f1length ++ f1elemt ++ f1elemf ++
+>                            f1max ++ f1sum ++ f1product ++ f1foldrM ++ f3concat ++ f3concatMap ++
+>                            f1findt ++ f1findf ++
+>                            f1traverse ++ f3sequenceA
