@@ -41,6 +41,8 @@ Overview
 
 ----
 
+> {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+
 > {-# LANGUAGE DeriveFunctor          #-}
 > {-# LANGUAGE DeriveFoldable         #-}
 > {-# LANGUAGE DeriveTraversable      #-}
@@ -60,62 +62,62 @@ Overview
 
 > module RS where
 >
-> import Prelude hiding (lookup)
-> import Control.Applicative (many, empty, (<|>))
-> import Control.Arrow ((&&&),(***),(|||), first, second)
-> import Control.Monad hiding (mapM, sequence)
-> import Control.Monad.Reader hiding (mapM, sequence)
-> import Control.Monad.ST
-> import qualified Data.Foldable as F
-
-----
-
-> import Data.Map (Map)
-> import qualified Data.Map as M
-> import Data.Set (Set)
-> import qualified Data.Set as S
-> import Data.Maybe
-> import Data.Monoid
-> import Data.Traversable
-> import Numeric
-> import Data.Functor.Identity as DFI (Identity(..))
+> import           Control.Applicative   (empty, many, (<|>))
+> import           Control.Arrow         (first, second, (&&&), (***), (|||))
+> import           Control.Monad.Reader  (ReaderT, ask, fix, lift, runReaderT, (<=<))
+> import           Control.Monad.ST      (ST, runST)
+> import           Data.Foldable         (find, fold, toList)
+> import           Data.Functor.Identity as DFI (Identity (..))
+> import           Data.Map              as M (Map, fromList, insert, lookup, (!))
+> import           Data.Maybe            (fromMaybe, isJust)
+> import           Data.Monoid           (Sum (..), getSum, (<>))
+> import           Data.Set              (Set, singleton)
+> import           Data.Traversable      (mapAccumL, mapAccumR)
+> import           Numeric               (readFloat, readSigned)
+> import           Prelude               hiding (lookup)
+> import           System.IO.Unsafe      (unsafePerformIO)
 
 ----
 
 Third-party Hackage packages
 ----------------------------
 
-> import Data.Bool.Extras (bool)
-> import Data.Hashable
-> import Data.HashTable.Class (HashTable)
-> import qualified Data.HashTable.ST.Cuckoo as C
-> import qualified Data.HashTable.Class as H
-> import Text.ParserCombinators.Parsec hiding (space, many, (<|>))
-> import Text.Parsec.Prim (ParsecT(..))
-> import Text.PrettyPrint.Leijen (Doc, Pretty, (<+>), text, space, pretty)
-> import qualified Text.PrettyPrint.Leijen as PP
-> import Test.HUnit
-> import qualified Test.HUnit.Util as TT
+> import           Data.Bool.Extras              (bool)
+> import           Data.Hashable                 (Hashable, hashWithSalt)
+> import           Data.HashTable.Class          (HashTable)
+> import qualified Data.HashTable.Class          as H (insert, lookup, new)
+> import qualified Data.HashTable.ST.Cuckoo      as C (HashTable)
+> import           Test.HUnit                    (Counts, Test (TestList), runTestTT)
+> import qualified Test.HUnit.Util               as U (e, t)
+> import           Text.Parsec.Prim              (ParsecT)
+> import           Text.ParserCombinators.Parsec hiding (many, space, (<|>))
+> import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
+> import qualified Text.PrettyPrint.Leijen       as PP (brackets, parens, (<>))
 
 Foldable
 ========
 
 Process elements of a structure one-at-a-time, discarding the structure.
 
-- Intuitively: list-like fold methods
-- Derivable using the `DeriveFoldable` language pragma
-
 ~~~{.haskell}
 class Foldable t where
-    foldMap :: Monoid m => (a -> m) -> t a -> m
-    fold :: Monoid m => t m -> m
-    foldr :: (a -> b -> b) -> b -> t a -> b
-    foldl :: (a -> b -> a) -> a -> t b -> a
-    foldr1 :: (a -> a -> a) -> t a -> a
-    foldl1 :: (a -> a -> a) -> t a -> a
+
+  -- | Combine elements of structure using a monoid.
+  fold :: Monoid m => t m -> m
+
+  -- | Map each element of structure to a monoid
+  --   and combine results.
+  foldMap :: Monoid m => (a -> m) -> t a -> m
+
+  -- | Right-associative fold of structure.
+  foldr :: (a -> b -> b) -> b -> t a -> b
+
+  -- ...
 ~~~
 
 ----
+
+By hand
 
 ~~~{.haskell}
 data Tree a = Empty | Leaf a | Node (Tree a) (Tree a)
@@ -124,17 +126,23 @@ instance Foldable Tree
   foldMap f Empty      = mempty
   foldMap f (Leaf x)   = f x
   foldMap f (Node l r) = foldMap f l <> foldMap f r
-
-count :: Foldable t => t a -> Int
-count = getSum . foldMap (const $ Sum 1)
+  ...
+  length = Data.Monoid.getSum .
+             foldMap (const $ Data.Monoid.Sum 1)
 ~~~
 
 ----
+
+Derive using `{-# LANGUAGE DeriveFoldable #-}`
 
 > data Tree a = E
 >             | L a
 >             | B (Tree a) a (Tree a)
 >             deriving (Eq, Foldable, Functor, Show, Traversable)
+
+----
+
+Example data
 
 > f1 :: Tree Int
 > f1 = B (B (B (L 1) 2 E)
@@ -157,44 +165,146 @@ count = getSum . foldMap (const $ Sum 1)
 >      [5]
 >      E
 
-----
-
 Foldable typeclass operations
 =============================
 
-> f2fold      = TT.t "f2fold"      (F.fold f2)                 "12345"
-> f1foldMap   = TT.t "f1foldMap"   (foldMap show f1)           "12345"
+~~~{.haskell}
+  -- | Combine elements of structure using a monoid.
+  fold :: Monoid m => t m -> m
+~~~
 
-> f1foldr     = TT.t "f1foldr"     (foldr (+) 0 f1)            15
-> f1foldr2    = TT.t "f1foldr2"    (foldr ((++) . show) "" f1) "12345"
+> f2fold      = U.t "f2fold"
+>               (fold f2)                   "12345"
 
-> f1foldr1    = TT.t "f1foldr1"    (foldr1 (+) f1)             15
-> f1foldr1E   = TT.e "f1foldr1E"   (foldr1 (+) E)              "foldr1: empty structure"
+~~~{.haskell}
+  -- | Map each element of structure to a monoid, and combine results.
+  foldMap :: Monoid m => (a -> m) -> t a -> m
+~~~
 
-> f1toList    = TT.t "f1toList"    (F.toList f1)               [1,2,3,4,5]
-> fnullt      = TT.t "fnullt"      (null E)                    True
-> fnullf      = TT.t "fnullf"      (null (B E E E))            False
-> f1length    = TT.t "f1length"    (length f1)                 5
-> f1elemt     = TT.t "f1elemt"     (2 `elem` f1)               True
-> f1elemf     = TT.t "f1elemf"     (0 `elem` f1)               False
-> f1max       = TT.t "f1max"       (maximum f1)                5
-> f1sum       = TT.t "f1sum"       (sum f1)                    15
-> f1product   = TT.t "f1product"   (product f1)                120
+> f1foldMap   = U.t "f1foldMap"
+>               (foldMap show f1)           "12345"
 
-> -- TODO ((,) a)
+----
 
-> f1foldrM    = TT.t "f1foldrM"    (F.foldrM (\n acc -> [n + acc]) 0 f1)   [15]
+~~~{.haskell}
+  -- | Right-associative fold of structure.
+  foldr :: (a -> b -> b) -> b -> t a -> b
+~~~
 
-> f3concat    = TT.t "f3concat"    (concat f3)                 [1,2,3,4,5]
-> f3concatMap = TT.t "f3concatMap" (concatMap show f1)         "12345"
+> f1foldr     = U.t "f1foldr"
+>               (foldr (+) 0 f1)            15
+> f1foldr2    = U.t "f1foldr2"
+>               (foldr ((++) . show) "" f1) "12345"
 
-> f1findt     = TT.t "f1findt"     (F.find (==3) f1)           (Just 3)
-> f1findf     = TT.t "f1findf"     (F.find (==0) f1)           Nothing
+~~~{.haskell}
+  -- | 'foldr' with no base case.  For non-empty structures.
+  foldr1 :: (a -> a -> a) -> t a -> a
+~~~
+
+> f1foldr1    = U.t "f1foldr1"
+>               (foldr1 (+) f1)             15
+> f1foldr1E   = U.e "f1foldr1E"
+>               (foldr1 (+) E)              "foldr1: empty structure"
+
+----
+
+~~~{.haskell}
+  -- | List elements of structure, left to right.
+  toList :: t a -> [a]
+~~~
+
+> f1toList    = U.t "f1toList"
+>               (toList f1)                 [1,2,3,4,5]
+
+~~~{.haskell}
+  -- | Is structure empty?.
+  null :: t a -> Bool
+~~~
+
+> fnullt      = U.t "fnullt"
+>               (null E)                    True
+> fnullf      = U.t "fnullf"
+>               (null (B E E E))            False
+
+----
+
+~~~{.haskell}
+  -- | size/length of structure (e.g., num elements)
+  length :: t a -> Int
+~~~
+
+> f1length    = U.t "f1length"
+>               (length f1)                 5
+
+~~~{.haskell}
+  -- | Does element occur in structure?
+  elem :: Eq a => a -> t a -> Bool
+~~~
+
+> f1elemt     = U.t "f1elemt"
+>               (2 `elem` f1)               True
+> f1elemf     = U.t "f1elemf"
+>               (0 `elem` f1)               False
+
+----
+
+~~~{.haskell}
+  -- | Largest element of non-empty structure.
+  maximum :: forall a . Ord a => t a -> a
+~~~
+
+> f1max       = U.t "f1max"
+>               (maximum f1)                5
+
+~~~{.haskell}
+  -- | Sum the numbers of structure.
+  sum :: Num a => t a -> a
+~~~
+
+> f1sum       = U.t "f1sum"
+>               (sum f1)                    15
+
+~~~{.haskell}
+  -- | Multiply the numbers of a structure.
+  product :: Num a => t a -> a
+~~~
+
+> f1product   = U.t "f1product"
+>               (product f1)                120
+
+
+non-TC functions on `Foldable`
+==============================
+
+~~~{.haskell}
+  concat :: Foldable t => t [a] -> [a]
+~~~
+
+> f3concat    = U.t "f3concat"
+>               (concat f3)                 [1,2,3,4,5]
+
+~~~{.haskell}
+  concatMap :: Foldable t => (a -> [b]) -> t a -> [b]
+~~~
+
+> f3concatMap = U.t "f3concatMap"
+>               (concatMap show f1)         "12345"
+
+> -- and, or, any, all, maximumBy, minimumBy, notElem
+
+~~~{.haskell}
+find :: Foldable t => (a -> Bool) -> t a -> Maybe a
+~~~
+
+> f1findt     = U.t "f1findt"
+>               (find (==3) f1)             (Just 3)
+> f1findf     = U.t "f1findf"
+>               (find (==0) f1)             Nothing
 
 Traversable
 ===========
 
-Traverse a structure, from left-to-right, performing an effectful action on each element and preserving the structure.
+Traverse a structure, from left-to-right, performing an effectful action on each element, preserving the structure.
 
 - Intuitively: fmap with "effects"
 - Derivable using the `DeriveTraversable` language pragma
@@ -202,16 +312,10 @@ Traverse a structure, from left-to-right, performing an effectful action on each
 
 ~~~{.haskell}
 class (Functor t, Foldable t) => Traversable t where
-  traverse :: Applicative f =>
-              (a -> f b) -> t a -> f (t b)
-  sequenceA :: Applicative f => t (f a) -> f (t a)
-  mapM :: Monad m => (a -> m b) -> t a -> m (t b)
-  sequence :: Monad m => t (m a) -> m (t a)
+  ...
 ~~~
 
-Note: sequence can be thought of as a generalised matrix transpose.
-
-----
+By hand
 
 ~~~{.haskell}
 instance Traversable Tree where
@@ -219,27 +323,100 @@ instance Traversable Tree where
   traverse f (Leaf x) = Leaf <$> f x
   traverse f (Node k r) =
     Node <$> traverse f l <*> traverse f r
+  ...
+  sequence = mapM id
 ~~~
+
+Derive using `{-# LANGUAGE DeriveTraversable #-}`
+
+Typeclass functions
+===================
 
 ~~~{.haskell}
-sequence :: Monad m => t (m a) -> m (t a)
-sequence = mapM id
+  -- | Map each element of structure to an action,
+  -- evaluate the actions left to right, collect the results.
+  traverse :: Applicative f => (a -> f b) -> t a -> f (t b)
 ~~~
 
-~~~
-sequence [putStrLn "a", putStrLn "b"] :: IO [()]
+> f1traverse  = U.t "f1traverse"
+>               (traverse (\x -> [show x]) f1)
+>               [B (B (B (L "1") "2" E) "3" (L "4")) "5" E]
+
+~~~{.haskell}
+  -- | Evaluate each action in structure from left to right,
+  -- collect the results.
+  sequenceA :: Applicative f => t (f a) -> f (t a)
 ~~~
 
-> f1traverse  = TT.t "f1traverse"  (traverse (\x -> [show x]) f1) [B (B (B (L "1") "2" E) "3" (L "4")) "5" E]
-> f3sequenceA = TT.t "f3sequenceA" (sequenceA f3)                 [B (B (B (L 1) 2 E) 3 (L 4)) 5 E]
+> f3sequenceA = U.t "f3sequenceA"
+>               (sequenceA f3)
+>               [B (B (B (L  1)   2  E)  3  (L  4))   5  E]
+
+----
+
+~~~{.haskell}
+  -- | Map each element of structure to a monadic action,
+  -- evaluate the actions left to right, collect the results.
+  mapM :: Monad m => (a -> m b) -> t a -> m (t b)
+~~~
+
+> -- TODO mapM example
+
+~~~{.haskell}
+  -- | Evaluate each monadic action in structure
+  -- from left to right, collect the results.
+  sequence :: Monad m => t (m a) -> m (t a)
+~~~
+
+> iosequence  = U.t "iosequence"
+>               (unsafePerformIO (sequence [putStrLn "a", putStrLn "b"]))
+>               [(),()]  -- :: IO [()]
+
+
+non-TC functions on `Traversable`
+==============================
+
+~~~{.haskell}
+  -- | Behaves like a combination of 'fmap' and 'foldl'.
+  mapAccumL :: Traversable t => (a -> b -> (a, c)) -> a -> t b -> (a, t c)
+
+  -- | Behaves like a combination of 'fmap' and 'foldr'
+  -- applies function to each element of structure,
+  -- passing an accumulating parameter from left to right,
+  -- returning final value of accumulator and new structure.
+  mapAccumR :: Traversable t => (a -> b -> (a, c)) -> a -> t b -> (a, t c)
+~~~
+
+> f2mapAccumL1 = U.t "f2mapAccumL1"
+>                (mapAccumL (\x acc -> (x ++ acc, x)) "Z" f2)
+>                ( "Z12345"
+>                , B (B (B (L "Z")     "Z1" E)   "Z12" (L "Z123")) "Z1234" E
+>                )
+>
+> f2mapAccumL2 = U.t "f2mapAccumL2"
+>                (mapAccumL (\x acc -> (x, x ++ acc)) "Z" f2)
+>                ( "Z"
+>                , B (B (B (L "Z1")    "Z2"   E) "Z3"  (L "Z4"))   "Z5"    E
+>                )
+>
+> f2mapAccumR1 = U.t "f2mapAccumR1"
+>                (mapAccumR (\x acc -> (x ++ acc, x)) "Z" f2)
+>                ( "Z54321"
+>                , B (B (B (L "Z5432") "Z543" E) "Z54" (L "Z5"))   "Z"     E
+>                )
+>
+> f2mapAccumR2 = U.t "f2mapAccumR2"
+>                (mapAccumR (\x acc -> (x, x ++ acc)) "Z" f2)
+>                ( "Z"
+>                , B (B (B (L "Z1")    "Z2"   E) "Z3"  (L "Z4"))   "Z5"    E
+>                )
 
 ----
 
 What if access to the structure is required?
 ----------------------------------------
 
-i.e., need to work with a domain of (`f a`) instead of `a`
-
+i.e., need to work with domain `f a` instead of `a`
 
 Catamorphisms
 =============
@@ -572,8 +749,8 @@ Example: collecting free variables
 > freeVars :: Expr -> Set Id
 > freeVars = cata alg where
 >     alg :: ExprF (Set Id) -> Set Id
->     alg (Var i) = S.singleton i
->     alg e = F.fold e
+>     alg (Var i) = singleton i
+>     alg e = fold e
 
 ~~~
  > freeVars e1
@@ -1063,7 +1240,7 @@ Example: collecting all catamorphism sub-results
 >    where
 >      k  = Fix ft
 >      v  = alg $ fmap (m' M.!) ft
->      m' = F.fold fm
+>      m' = fold fm
 >
 
 ~~~
@@ -1243,7 +1420,7 @@ type `f` with attributes of type `a`.
 For example, annotating each node with the sizes of all subtrees:
 
 > sizes :: (Functor f, Foldable f) => Fix f -> Ann f Int
-> sizes = synthesize $ (+1) . F.sum
+> sizes = synthesize $ (+1) . sum
 
 ----
 
@@ -1375,8 +1552,8 @@ memoize :: Enumerable k => (k -> v) -> k -> v
 - a monadic codomain enables using e.g. an underlying State or ST monad
 
 > memoize :: Memo k v m => (k -> m v) -> k -> m v
-> memoize f x = lookup x >>= (`maybe` return)
->   (f x >>= \r -> insert x r >> return r)
+> memoize f x = RS.lookup x >>= (`maybe` return)
+>   (f x >>= \r -> RS.insert x r >> return r)
 
 > memoFix :: Memo k v m =>
 >            ((k -> m v) -> k -> m v) -> k -> m v
@@ -1473,7 +1650,7 @@ The aim is to count the number of live conditionals causing discontinuities due 
 >   | isJust xv, isJust yv, xv == yv =  t <> x <> y
 >   | otherwise = maybe (Sum 1 <> t <> x <> y)
 >                       (bool (t <> y) (t <> x) . (<0)) tv
-> discontAlg e = F.fold . fmap fst $ e
+> discontAlg e = fold . fmap fst $ e
 
 Note: have to check for redundant live conditionals for which both branches evaluate to the same value.
 
@@ -1677,7 +1854,7 @@ Expr Hashable instance
 ----------------------
 
 > instance Hashable Expr where
->   hashWithSalt s = F.foldl hashWithSalt s . unFix
+>   hashWithSalt s = foldl hashWithSalt s . unFix
 
 > instance Hashable r => Hashable (ExprF r) where
 >   hashWithSalt s (Const c)
@@ -1833,6 +2010,6 @@ tikz-qtree printer for annotated trees
 > main =
 >     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++ f1foldr1 ++ f1foldr1E ++
 >                            f1toList ++ fnullt ++ fnullf ++ f1length ++ f1elemt ++ f1elemf ++
->                            f1max ++ f1sum ++ f1product ++ f1foldrM ++ f3concat ++ f3concatMap ++
->                            f1findt ++ f1findf ++
->                            f1traverse ++ f3sequenceA
+>                            f1max ++ f1sum ++ f1product ++ f3concat ++ f3concatMap ++ f1findt ++ f1findf ++
+>                            f1traverse ++ f3sequenceA ++ iosequence ++
+>                            f2mapAccumL1 ++ f2mapAccumL2 ++ f2mapAccumR1 ++ f2mapAccumR2
