@@ -4,10 +4,10 @@ Introduction
 - Recursion is a pattern
 - There are different patterns of recursion
 - "factoring" recursion : benefits
-  - communicate/reason about programs
-  - code/idea reuse
-  - use a catalogue of theorems to optimise or prove properties
-  - identify/exploit parallelism
+    - communicate/reason about programs
+    - code/idea reuse
+    - use a catalogue of theorems to optimise or prove properties
+    - identify/exploit parallelism
 
 - REF: *Origami progamming* [1]  TODO
 
@@ -94,6 +94,87 @@ Third-party Hackage packages
 > import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
 > import qualified Text.PrettyPrint.Leijen       as PP (brackets, parens, (<>))
 
+Explicit Recursion
+==================
+
+note the pattern
+
+> sumE []     = 0
+> sumE (x:xs) = x +  sumE xs
+
+> andE []     = True
+> andE (x:xs) = x && andE xs
+
+Same recursive structure, except
+
+- `0` or `True` for the empty list
+- `+` or `&&` for the operator
+
+----
+
+Folds "factor out" recursion
+
+> sumF :: (Foldable t, Num b) => t b    -> b
+> sumF  = foldr (+)  0
+
+> andF :: Foldable t          => t Bool -> Bool
+> andF  = foldr (&&) True
+
+----
+
+visualized as
+
+~~~{.haskell}
+     sumF                  andF
+      +                     &&
+     / \                   /  \
+    1   +               True   &&
+       / \                    /  \
+      2   +               False   &&
+         / \                     /  \
+        3   0                 True  True
+~~~
+
+----
+
+`length` follows similar pattern\
+except: ignores value of elements and keeps a counter
+
+> lengthE []     = 0
+> lengthE (_:xs) = 1 + lengthE xs
+
+expressed as a fold:
+
+> lengthF :: (Foldable t, Num b) => t a -> b
+> lengthF        = foldr (\_ n -> 1 + n) 0
+
+----
+
+to understand how this works, look at def of `foldr` :
+
+~~~{.haskell}
+foldr :: (a -> b -> b) -> b -> [a] -> b
+foldr f v []     = v
+foldr f v (x:xs) = f x (fold f v xs)
+~~~
+
+`length` visualized (along with the previous examples) as `1+` :
+
+~~~{.haskell}
+ sumF                  andF                  lengthF
+  +                     &&                      1+
+ / \                   /  \                    /  \
+1   +               True   &&                 _    1+
+   / \                    /  \                    /  \
+  2   +               False   &&                 _    1+
+     / \                     /  \                    /  \
+    3   0                 True  True                _    0
+~~~
+
+----
+
+Next: generalize `fold` to work on other types.
+
 Foldable
 ========
 
@@ -106,7 +187,7 @@ class Foldable t where
   fold :: Monoid m => t m -> m
 
   -- | Map each element of structure to a monoid
-  --   and combine results.
+  -- and combine results.
   foldMap :: Monoid m => (a -> m) -> t a -> m
 
   -- | Right-associative fold of structure.
@@ -117,7 +198,7 @@ class Foldable t where
 
 ----
 
-By hand
+instances by hand
 
 ~~~{.haskell}
 data Tree a = Empty | Leaf a | Node (Tree a) (Tree a)
@@ -133,12 +214,13 @@ instance Foldable Tree
 
 ----
 
-Derive using `{-# LANGUAGE DeriveFoldable #-}`
+or derive using `{-# LANGUAGE DeriveFoldable #-}`
 
 > data Tree a = E
 >             | L a
 >             | B (Tree a) a (Tree a)
->             deriving (Eq, Foldable, Functor, Show, Traversable)
+>             deriving (Eq, Foldable, Functor
+>                      , Show, Traversable)
 
 ----
 
@@ -169,16 +251,17 @@ Foldable typeclass operations
 =============================
 
 ~~~{.haskell}
-  -- | Combine elements of structure using a monoid.
-  fold :: Monoid m => t m -> m
+-- | Combine elements of structure using a monoid.
+fold :: Monoid m => t m -> m
 ~~~
 
 > f2fold      = U.t "f2fold"
 >               (fold f2)                   "12345"
 
 ~~~{.haskell}
-  -- | Map each element of structure to a monoid, and combine results.
-  foldMap :: Monoid m => (a -> m) -> t a -> m
+-- | Map each element of structure to a monoid
+-- and combine results.
+foldMap :: Monoid m => (a -> m) -> t a -> m
 ~~~
 
 > f1foldMap   = U.t "f1foldMap"
@@ -186,9 +269,31 @@ Foldable typeclass operations
 
 ----
 
+note on `Data.Monoid`
+
+Types with associative binary operation and identity.\
+Instances must should satisfy laws:
+
+- `mappend mempty x        = x`
+- `mappend x mempty        = x`
+- `mappend x (mappend y z) = mappend (mappend x y) z`
+- `mconcat                 = foldr mappend mempty`
+
 ~~~{.haskell}
-  -- | Right-associative fold of structure.
-  foldr :: (a -> b -> b) -> b -> t a -> b
+class Monoid a where
+  -- | Identity of 'mappend'
+  mempty  :: a
+  -- | Associative operation
+  mappend :: a -> a -> a
+  -- | Fold a list using the monoid.
+  mconcat :: [a] -> a
+~~~
+
+----
+
+~~~{.haskell}
+-- | Right-associative fold of structure.
+foldr :: (a -> b -> b) -> b -> t a -> b
 ~~~
 
 > f1foldr     = U.t "f1foldr"
@@ -197,8 +302,8 @@ Foldable typeclass operations
 >               (foldr ((++) . show) "" f1) "12345"
 
 ~~~{.haskell}
-  -- | 'foldr' with no base case.  For non-empty structures.
-  foldr1 :: (a -> a -> a) -> t a -> a
+-- | 'foldr' with no base case. For non-empty structures.
+foldr1 :: (a -> a -> a) -> t a -> a
 ~~~
 
 > f1foldr1    = U.t "f1foldr1"
@@ -209,16 +314,16 @@ Foldable typeclass operations
 ----
 
 ~~~{.haskell}
-  -- | List elements of structure, left to right.
-  toList :: t a -> [a]
+-- | List elements of structure, left to right.
+toList :: t a -> [a]
 ~~~
 
 > f1toList    = U.t "f1toList"
 >               (toList f1)                 [1,2,3,4,5]
 
 ~~~{.haskell}
-  -- | Is structure empty?.
-  null :: t a -> Bool
+-- | Is structure empty?.
+null :: t a -> Bool
 ~~~
 
 > fnullt      = U.t "fnullt"
@@ -229,16 +334,16 @@ Foldable typeclass operations
 ----
 
 ~~~{.haskell}
-  -- | size/length of structure (e.g., num elements)
-  length :: t a -> Int
+-- | size/length of structure (e.g., num elements)
+length :: t a -> Int
 ~~~
 
 > f1length    = U.t "f1length"
 >               (length f1)                 5
 
 ~~~{.haskell}
-  -- | Does element occur in structure?
-  elem :: Eq a => a -> t a -> Bool
+-- | Does element occur in structure?
+elem :: Eq a => a -> t a -> Bool
 ~~~
 
 > f1elemt     = U.t "f1elemt"
@@ -249,24 +354,24 @@ Foldable typeclass operations
 ----
 
 ~~~{.haskell}
-  -- | Largest element of non-empty structure.
-  maximum :: forall a . Ord a => t a -> a
+-- | Largest element of non-empty structure.
+maximum :: forall a . Ord a => t a -> a
 ~~~
 
 > f1max       = U.t "f1max"
 >               (maximum f1)                5
 
 ~~~{.haskell}
-  -- | Sum the numbers of structure.
-  sum :: Num a => t a -> a
+-- | Sum the numbers of structure.
+sum :: Num a => t a -> a
 ~~~
 
 > f1sum       = U.t "f1sum"
 >               (sum f1)                    15
 
 ~~~{.haskell}
-  -- | Multiply the numbers of a structure.
-  product :: Num a => t a -> a
+-- | Multiply the numbers of a structure.
+product :: Num a => t a -> a
 ~~~
 
 > f1product   = U.t "f1product"
@@ -277,14 +382,14 @@ non-TC functions on `Foldable`
 ==============================
 
 ~~~{.haskell}
-  concat :: Foldable t => t [a] -> [a]
+concat :: Foldable t => t [a] -> [a]
 ~~~
 
 > f3concat    = U.t "f3concat"
 >               (concat f3)                 [1,2,3,4,5]
 
 ~~~{.haskell}
-  concatMap :: Foldable t => (a -> [b]) -> t a -> [b]
+concatMap :: Foldable t => (a -> [b]) -> t a -> [b]
 ~~~
 
 > f3concatMap = U.t "f3concatMap"
@@ -315,7 +420,7 @@ class (Functor t, Foldable t) => Traversable t where
   ...
 ~~~
 
-By hand
+instances by hand
 
 ~~~{.haskell}
 instance Traversable Tree where
@@ -327,15 +432,15 @@ instance Traversable Tree where
   sequence = mapM id
 ~~~
 
-Derive using `{-# LANGUAGE DeriveTraversable #-}`
+or derive using `{-# LANGUAGE DeriveTraversable #-}`
 
 Typeclass functions
 ===================
 
 ~~~{.haskell}
-  -- | Map each element of structure to an action,
-  -- evaluate the actions left to right, collect the results.
-  traverse :: Applicative f => (a -> f b) -> t a -> f (t b)
+-- | Map each element of structure to an action,
+-- evaluate the actions left to right, collect the results.
+traverse :: Applicative f => (a -> f b) -> t a -> f (t b)
 ~~~
 
 > f1traverse  = U.t "f1traverse"
@@ -343,9 +448,9 @@ Typeclass functions
 >               [B (B (B (L "1") "2" E) "3" (L "4")) "5" E]
 
 ~~~{.haskell}
-  -- | Evaluate each action in structure from left to right,
-  -- collect the results.
-  sequenceA :: Applicative f => t (f a) -> f (t a)
+-- | Evaluate each action in structure from left to right,
+-- collect the results.
+sequenceA :: Applicative f => t (f a) -> f (t a)
 ~~~
 
 > f3sequenceA = U.t "f3sequenceA"
@@ -355,36 +460,32 @@ Typeclass functions
 ----
 
 ~~~{.haskell}
-  -- | Map each element of structure to a monadic action,
-  -- evaluate the actions left to right, collect the results.
-  mapM :: Monad m => (a -> m b) -> t a -> m (t b)
+-- | Map each element of structure to a monadic action,
+-- evaluate the actions left to right, collect the results.
+mapM :: Monad m => (a -> m b) -> t a -> m (t b)
 ~~~
 
 > -- TODO mapM example
 
 ~~~{.haskell}
-  -- | Evaluate each monadic action in structure
-  -- from left to right, collect the results.
-  sequence :: Monad m => t (m a) -> m (t a)
+-- | Evaluate each monadic action in structure
+-- from left to right, collect the results.
+sequence :: Monad m => t (m a) -> m (t a)
 ~~~
 
 > iosequence  = U.t "iosequence"
 >               (unsafePerformIO (sequence [putStrLn "a", putStrLn "b"]))
 >               [(),()]  -- :: IO [()]
 
-
 non-TC functions on `Traversable`
 ==============================
 
 ~~~{.haskell}
-  -- | Behaves like a combination of 'fmap' and 'foldl'.
-  mapAccumL :: Traversable t => (a -> b -> (a, c)) -> a -> t b -> (a, t c)
-
-  -- | Behaves like a combination of 'fmap' and 'foldr'
-  -- applies function to each element of structure,
-  -- passing an accumulating parameter from left to right,
-  -- returning final value of accumulator and new structure.
-  mapAccumR :: Traversable t => (a -> b -> (a, c)) -> a -> t b -> (a, t c)
+-- | Behaves like a combination of 'fmap' and 'foldr'
+-- applies function to each element of structure,
+-- passing an accumulating parameter from left to right,
+-- returning final value of accumulator and new structure.
+mapAccumR :: Traversable t => (a -> b -> (a, c)) -> a -> t b -> (a, t c)
 ~~~
 
 > f2mapAccumL1 = U.t "f2mapAccumL1"
