@@ -9,8 +9,6 @@ Introduction
     - use a catalogue of theorems to optimise or prove properties
     - identify/exploit parallelism
 
-- REF: *Origami progamming* [1]  TODO
-
 Overview
 ========
 
@@ -43,20 +41,20 @@ Overview
 
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-> {-# LANGUAGE DeriveFunctor          #-}
 > {-# LANGUAGE DeriveFoldable         #-}
+> {-# LANGUAGE DeriveFunctor          #-}
 > {-# LANGUAGE DeriveTraversable      #-}
 > {-# LANGUAGE FlexibleContexts       #-}
 > {-# LANGUAGE FlexibleInstances      #-}
-> {-# LANGUAGE StandaloneDeriving     #-}
-> {-# LANGUAGE UndecidableInstances   #-}
-> {-# LANGUAGE ScopedTypeVariables    #-}
-> {-# LANGUAGE ViewPatterns           #-}
-> {-# LANGUAGE TypeOperators          #-}
-> {-# LANGUAGE TupleSections          #-}
-> {-# LANGUAGE RankNTypes             #-}
-> {-# LANGUAGE MultiParamTypeClasses  #-}
 > {-# LANGUAGE FunctionalDependencies #-}
+> {-# LANGUAGE MultiParamTypeClasses  #-}
+> {-# LANGUAGE RankNTypes             #-}
+> {-# LANGUAGE ScopedTypeVariables    #-}
+> {-# LANGUAGE StandaloneDeriving     #-}
+> {-# LANGUAGE TupleSections          #-}
+> {-# LANGUAGE TypeOperators          #-}
+> {-# LANGUAGE UndecidableInstances   #-}
+> {-# LANGUAGE ViewPatterns           #-}
 
 ----
 
@@ -231,21 +229,14 @@ or derive using `{-# LANGUAGE DeriveFoldable #-}`
 Example data
 
 > f1 :: Tree Int
-> f1 = B (B (B (L 1) 2 E)
+> f1 = B (B (B (L  1)   2 E)
 >         3
->         (L 4))
+>         (L  4))
 >      5
 >      E
 
-> f2 :: Tree String
-> f2 = B (B (B (L "1") "2" E)
->         "3"
->         (L "4"))
->      "5"
->      E
-
-> f3 :: Tree [Int]
-> f3 = B (B (B (L [1]) [2] E)
+> f2 :: Tree [Int]
+> f2 = B (B (B (L [1]) [2] E)
 >         [3]
 >         (L [4]))
 >      [5]
@@ -260,7 +251,7 @@ fold :: Monoid m => t m -> m
 ~~~
 
 > f2fold      = U.t "f2fold"
->               (fold f2)                   "12345"
+>               (fold f2)                   [1,2,3,4,5]
 
 ~~~{.haskell}
 -- | Map each element of structure to a monoid
@@ -306,118 +297,64 @@ foldr :: (a -> b -> b) -> b -> t a -> b
 >               (foldr ((++) . show) "" f1) "12345"
 
 ~~~{.haskell}
--- | 'foldr' with no base case. For non-empty structures.
+-- | foldr with no base case. For non-empty structures.
 foldr1 :: (a -> a -> a) -> t a -> a
-~~~
 
-> f1foldr1    = U.t "f1foldr1"
->               (foldr1 (+) f1)             15
-> f1foldr1E   = U.e "f1foldr1E"
->               (foldr1 (+) E)              "foldr1: empty structure"
-
-----
-
-~~~{.haskell}
 -- | List elements of structure, left to right.
 toList :: t a -> [a]
-~~~
 
-> f1toList    = U.t "f1toList"
->               (toList f1)                 [1,2,3,4,5]
-
-~~~{.haskell}
 -- | Is structure empty?.
 null :: t a -> Bool
 ~~~
-
-> fnullt      = U.t "fnullt"
->               (null E)                    True
-> fnullf      = U.t "fnullf"
->               (null (B E E E))            False
 
 ----
 
 ~~~{.haskell}
 -- | size/length of structure (e.g., num elements)
 length :: t a -> Int
-~~~
 
-> f1length    = U.t "f1length"
->               (length f1)                 5
-
-~~~{.haskell}
 -- | Does element occur in structure?
 elem :: Eq a => a -> t a -> Bool
-~~~
 
-> f1elemt     = U.t "f1elemt"
->               (2 `elem` f1)               True
-> f1elemf     = U.t "f1elemf"
->               (0 `elem` f1)               False
-
-----
-
-~~~{.haskell}
 -- | Largest element of non-empty structure.
 maximum :: forall a . Ord a => t a -> a
-~~~
 
-> f1max       = U.t "f1max"
->               (maximum f1)                5
-
-~~~{.haskell}
 -- | Sum the numbers of structure.
 sum :: Num a => t a -> a
-~~~
 
-> f1sum       = U.t "f1sum"
->               (sum f1)                    15
-
-~~~{.haskell}
 -- | Multiply the numbers of a structure.
 product :: Num a => t a -> a
 ~~~
 
-> f1product   = U.t "f1product"
->               (product f1)                120
-
+----
 
 non-TC functions on `Foldable`
-==============================
 
 ~~~{.haskell}
 concat :: Foldable t => t [a] -> [a]
 ~~~
 
-> f3concat    = U.t "f3concat"
->               (concat f3)                 [1,2,3,4,5]
+> f2concat    = U.t "f2concat"
+>               (concat f2)                 [1,2,3,4,5]
 
 ~~~{.haskell}
 concatMap :: Foldable t => (a -> [b]) -> t a -> [b]
 ~~~
 
-> f3concatMap = U.t "f3concatMap"
+> f1concatMap = U.t "f1concatMap"
 >               (concatMap show f1)         "12345"
 
-> -- and, or, any, all, maximumBy, minimumBy, notElem
-
-~~~{.haskell}
-find :: Foldable t => (a -> Bool) -> t a -> Maybe a
-~~~
-
-> f1findt     = U.t "f1findt"
->               (find (==3) f1)             (Just 3)
-> f1findf     = U.t "f1findf"
->               (find (==0) f1)             Nothing
+> -- and, or, any, all,
+> -- maximumBy, minimumBy,
+> -- notElem, find
 
 Traversable
 ===========
 
 Traverse a structure, from left-to-right, performing an effectful action on each element, preserving the structure.
 
-- Intuitively: fmap with "effects"
-- Derivable using the `DeriveTraversable` language pragma
-- REF: _Applicative Programming with Effects_, by McBride and Paterson [2]
+- `fmap` with "effects"
+- _Applicative Programming with Effects_, McBride/Paterson
 
 ~~~{.haskell}
 class (Functor t, Foldable t) => Traversable t where
@@ -428,12 +365,10 @@ instances by hand
 
 ~~~{.haskell}
 instance Traversable Tree where
-  traverse f Empty = pure Empty
-  traverse f (Leaf x) = Leaf <$> f x
+  traverse f Empty      = pure Empty
+  traverse f (Leaf x)   = Leaf <$> f x
   traverse f (Node k r) =
-    Node <$> traverse f l <*> traverse f r
-  ...
-  sequence = mapM id
+      Node <$> traverse f l <*> traverse f r
 ~~~
 
 or derive using `{-# LANGUAGE DeriveTraversable #-}`
@@ -457,8 +392,8 @@ traverse :: Applicative f => (a -> f b) -> t a -> f (t b)
 sequenceA :: Applicative f => t (f a) -> f (t a)
 ~~~
 
-> f3sequenceA = U.t "f3sequenceA"
->               (sequenceA f3)
+> f2sequenceA = U.t "f2sequenceA"
+>               (sequenceA f2)
 >               [B (B (B (L  1)   2  E)  3  (L  4))   5  E]
 
 ----
@@ -492,28 +427,28 @@ non-TC functions on `Traversable`
 mapAccumR :: Traversable t => (a -> b -> (a, c)) -> a -> t b -> (a, t c)
 ~~~
 
-> f2mapAccumL1 = U.t "f2mapAccumL1"
->                (mapAccumL (\x acc -> (x ++ acc, x)) "Z" f2)
->                ( "Z12345"
->                , B (B (B (L "Z")     "Z1" E)   "Z12" (L "Z123")) "Z1234" E
+> f1mapAccumL1 = U.t "f1mapAccumL1"
+>                (mapAccumL (\a b -> (a+1 , show b)) 0.0 f1)
+>                ( 5.0
+>                , B (B (B (L "1") "2" E) "3" (L "4")) "5" E
 >                )
 >
-> f2mapAccumL2 = U.t "f2mapAccumL2"
->                (mapAccumL (\x acc -> (x, x ++ acc)) "Z" f2)
->                ( "Z"
->                , B (B (B (L "Z1")    "Z2"   E) "Z3"  (L "Z4"))   "Z5"    E
+> f1mapAccumL2 = U.t "f1mapAccumL2"
+>                (mapAccumL (\a b -> (a+1, show b ++ "-" ++ show a)) 0.0 f1)
+>                ( 5.0
+>                , B (B (B (L "1-0.0") "2-1.0" E) "3-2.0" (L "4-3.0")) "5-4.0" E
 >                )
 >
-> f2mapAccumR1 = U.t "f2mapAccumR1"
->                (mapAccumR (\x acc -> (x ++ acc, x)) "Z" f2)
->                ( "Z54321"
->                , B (B (B (L "Z5432") "Z543" E) "Z54" (L "Z5"))   "Z"     E
+> f1mapAccumR1 = U.t "f1mapAccumR1"
+>                (mapAccumR (\a b -> (a+1 , show b)) 0.0 f1)
+>                ( 5.0
+>                , B (B (B (L "1") "2" E) "3" (L "4")) "5" E
 >                )
 >
-> f2mapAccumR2 = U.t "f2mapAccumR2"
->                (mapAccumR (\x acc -> (x, x ++ acc)) "Z" f2)
->                ( "Z"
->                , B (B (B (L "Z1")    "Z2"   E) "Z3"  (L "Z4"))   "Z5"    E
+> f1mapAccumR2 = U.t "f1mapAccumR2"
+>                (mapAccumR (\a b -> (a+1, show b ++ "-" ++ show a)) 0.0 f1)
+>                ( 5.0
+>                , B (B (B (L "1-4.0") "2-3.0" E) "3-2.0" (L "4-1.0")) "5-0.0" E
 >                )
 
 ----
@@ -526,67 +461,64 @@ i.e., need to work with domain `f a` instead of `a`
 Catamorphisms
 =============
 
-A *catamorphism* (cata meaning “downwards”) is a generalisation of the concept of a fold.
+cata meaning “downwards” : generalisation of fold
 
-- models the fundamental pattern of (internal) *iteration*
-- for a list, it describes bracketing from the right
-- for a tree, it describes a bottom-up traversal, i.e. children first
-
-`foldr` on lists is a specialised catamorphism:
+- models (internal) *iteration*
 
 ~~~{.haskell}
 foldr :: (a -> b -> b) -> z -> [a] -> b
-foldr f z []     = z
-foldr f z (x:xs) = f x (foldr f z xs)
+foldr f z    []     = z
+foldr f z    (x:xs) = f          x (foldr f z  xs)
 ~~~
 
----
-
-- the parameters used above can be expressed in terms of a single
-_F-algebra_ `f b -> b` over a functor `f` and carrier `b`
+written in form closer to theory
 
 > foldrP :: (Maybe (a, b) -> b) -> [a] -> b
 > foldrP alg []     = alg Nothing
 > foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
 
-> jp Nothing        = 0
-> jp (Just (a, bs)) = a + bs
+----
+
+~~~{.haskell}
+foldrP :: (Maybe (a, b) -> b) -> [a] -> b
+foldrP alg []     = alg Nothing
+foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
+~~~
+
+> mp Nothing        = 0
+> mp (Just (a, bs)) = a + bs
 
 > fpl = U.tt "fpl"
->       [                      foldrP jp [1,2]
->       ,         jp (Just (1, foldrP jp   [2]))
->       , 1 +                  foldrP jp   [2]
->       , 1 +     jp (Just (2, foldrP jp   []))
->       , 1 + 2 +              foldrP jp   []
->       , 1 + 2 + jp           Nothing
+>       [                      foldrP mp [1,2]
+>       ,         mp (Just (1, foldrP mp   [2]))
+>       , 1 +                  foldrP mp   [2]
+>       , 1 +     mp (Just (2, foldrP mp   []))
+>       , 1 + 2 +              foldrP mp   []
+>       , 1 + 2 + mp           Nothing
 >       , 1 + 2 + 0
 >       ]
 >       3
 
 ----
 
-- TODO : why this instead of above?
-- factor out `List a` to `Maybe (a, [a])` isomorphism
+> lengthX :: [a] -> Int
+> lengthX = foldrP alg where
+>   alg :: Maybe (a, Int) -> Int
+>   alg Nothing        = 0
+>   alg (Just (_, xs)) = xs + 1
+
+> lx = U.t "lx" (lengthX "foobar") 6
+
+
+----
+
+written in form even closer to theory
 
 > foldrX :: (Maybe (a, b) -> b) -> [a] -> b
 > foldrX alg = alg . fmap (id *** foldrX alg) . unList
 >   where
 >     unList []     = Nothing
 >     unList (x:xs) = Just (x, xs)
-
-> fxl = U.tt "fxl"
->       [                            foldrX jp         [1, 2]
->       ,         (jp . fmap (id *** foldrX jp)) (Just (1,[2]))
->       ,          jp   (Just (1,    foldrX jp            [2]))
->       , 1 +                        foldrX jp            [2]
->       , 1 +     (jp . fmap (id *** foldrX jp)) (Just (2,[]))
->       , 1 +      jp   (Just (2,    foldrX jp            []))
->       , 1 + 2 +                    foldrX jp            []
->       , 1 + 2 + (jp . fmap (id *** foldrX jp)) Nothing
->       , 1 + 2 +  jp   Nothing
->       , 1 + 2 + 0
->       ]
->       3
 
 - Uses function product \footnote{defined more generally in Control.Arrow}
 
@@ -595,13 +527,29 @@ _F-algebra_ `f b -> b` over a functor `f` and carrier `b`
 (f *** g) (x, y) = (f x, g y)
 ~~~
 
-> lengthX :: [a] -> Int
-> lengthX = foldrX alg where
->   alg :: Maybe (a, Int) -> Int
->   alg Nothing        = 0
->   alg (Just (_, xs)) = xs + 1
+----
 
-> lx = U.t "lx" (lengthX "foobar") 6
+~~~{.haskell}
+foldrX :: (Maybe (a, b) -> b) -> [a] -> b
+foldrX alg = alg . fmap (id *** foldrX alg) . unList
+  where
+    unList []     = Nothing
+    unList (x:xs) = Just (x, xs)
+~~~
+
+> fxl = U.tt "fxl"
+>       [                            foldrX mp         [1, 2]
+>       ,         (mp . fmap (id *** foldrX mp)) (Just (1,[2]))
+>       ,          mp   (Just (1,    foldrX mp            [2]))
+>       , 1 +                        foldrX mp            [2]
+>       , 1 +     (mp . fmap (id *** foldrX mp)) (Just (2,[]))
+>       , 1 +      mp   (Just (2,    foldrX mp            []))
+>       , 1 + 2 +                    foldrX mp            []
+>       , 1 + 2 + (mp . fmap (id *** foldrX mp)) Nothing
+>       , 1 + 2 +  mp   Nothing
+>       , 1 + 2 + 0
+>       ]
+>       3
 
 ----
 
@@ -614,23 +562,12 @@ _F-algebra_ `f b -> b` over a functor `f` and carrier `b`
   \node (fixf) at (0,0) {\bf\it [a]};
   \node (fa) at (4.5,2.75) {\bf\it Maybe (a, b)};
   \node (a) at (4.5,0) {\bf\it b};
-  \draw[->] (ffixf) to node {\tiny fmap (id *** foldr alg)} (fa);
+  \draw[->] (ffixf) to node {\tiny fmap (id *** foldrX alg)} (fa);
   \draw[->] (fixf) to node {\tiny unList} (ffixf);
-  \draw[->] (fixf) to node [swap] {\tiny foldr alg} (a);
+  \draw[->] (fixf) to node [swap] {\tiny foldrX alg} (a);
   \draw[->] (fa) to node {\tiny alg} (a);
 \end{tikzpicture}
 }}
-
-----
-
-`foldl` can be written in terms of `foldrX` and an algebra with a higher-order carrier
-
-> foldlX :: forall a b. (b -> a -> b) -> [a] -> b -> b
-> foldlX f = foldrX alg where
->   alg :: Maybe (a, b -> b) -> b -> b
->   alg Nothing       = id
->   alg (Just (x,xs)) = \r -> xs (f r x)
-
 
 Fixed points of Functors
 ========================
@@ -1061,15 +998,15 @@ An *anamorphism* (ana meaning “upwards”) is a generalisation of the concept 
 
 - The corecursive dual of catamorphisms
 - produces streams and other regular structures from a seed
-- `ana` for lists is unfoldr, view patterns help see the duality
+- `ana` for lists is `unfoldr` (view patterns help see the duality)
 
 ~~~{.haskell}
-foldr :: (Maybe (a, b) -> b) -> [a] -> b
-foldr f []       = f $ Nothing
-foldr f (x : xs) = f $ Just (x, foldr f xs)
+foldrP  :: (Maybe (a, b) -> b) -> [a] -> b
+foldrP f []     = f Nothing
+foldrP f (x:xs) = f (Just (x, foldrP f xs))
 ~~~
 
-> unfoldr :: (b -> Maybe (a, b)) -> b -> [a]
+> unfoldr :: (b -> Maybe (a, b)) ->  b -> [a]
 > unfoldr f (f -> Nothing)                   = []
 > unfoldr f (f -> Just (x, unfoldr f -> xs)) = x : xs
 
@@ -1129,14 +1066,16 @@ Given two sorted lists, `mergeLists` merges them into one sorted list.
 Corecursion
 -----------
 
-An anamorphism is an example of *corecursion*, the dual of recursion. Corecursion produces (potentially infinite) codata, whereas ordinary recursion consumes (necessarily finite) data.
+An anamorphism is an example of *corecursion*, the dual of recursion.
+Corecursion produces (potentially infinite) codata, whereas ordinary recursion consumes (necessarily finite) data.
 
 - Using `cata` or `ana` only, programs are guaranteed to terminate
 - But not all programs can be written in terms of just `cata` or `ana`
 
 ----
 
-There is no enforced distinction between data and codata in Haskell, so use of `Fix` again\footnote{In total functional languages like Agda and Coq, it is required to make this distinction.}
+There is no enforced distinction between data and codata in Haskell,
+so use of `Fix` again\footnote{In total functional languages like Agda and Coq, it is required to make this distinction.}
 
 > -- | anamorphism
 > ana :: Functor f => (a -> f a) -> a -> Fix f
@@ -2136,9 +2075,7 @@ tikz-qtree printer for annotated trees
 
 > main :: IO Counts
 > main =
->     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++ f1foldr1 ++ f1foldr1E ++
->                            f1toList ++ fnullt ++ fnullf ++ f1length ++ f1elemt ++ f1elemf ++
->                            f1max ++ f1sum ++ f1product ++ f3concat ++ f3concatMap ++ f1findt ++ f1findf ++
->                            f1traverse ++ f3sequenceA ++ iosequence ++
->                            f2mapAccumL1 ++ f2mapAccumL2 ++ f2mapAccumR1 ++ f2mapAccumR2 ++
->                            fpl ++ fxl ++ lx
+>     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++ f2concat ++ f1concatMap ++
+>                            f1traverse ++ f2sequenceA ++ iosequence ++
+>                            f1mapAccumL1 ++ f1mapAccumL2 ++ f1mapAccumR1 ++ f1mapAccumR2 ++
+>                            fpl ++ lx ++ fxl
