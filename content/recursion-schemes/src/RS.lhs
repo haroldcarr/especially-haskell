@@ -75,7 +75,7 @@ Overview
 > import           Data.Traversable      (mapAccumL, mapAccumR)
 > import           Numeric               (readFloat, readSigned)
 > import           Prelude               hiding (lookup)
-> import           System.IO.Unsafe      (unsafePerformIO)
+> import           System.IO.Unsafe      (unsafePerformIO) -- for a test
 
 ----
 
@@ -88,7 +88,7 @@ Third-party Hackage packages
 > import qualified Data.HashTable.Class          as H (insert, lookup, new)
 > import qualified Data.HashTable.ST.Cuckoo      as C (HashTable)
 > import           Test.HUnit                    (Counts, Test (TestList), runTestTT)
-> import qualified Test.HUnit.Util               as U (e, t)
+> import qualified Test.HUnit.Util               as U (e, t, tt)
 > import           Text.Parsec.Prim              (ParsecT)
 > import           Text.ParserCombinators.Parsec hiding (many, space, (<|>))
 > import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
@@ -105,24 +105,20 @@ note the pattern
 > andE []     = True
 > andE (x:xs) = x && andE xs
 
-Same recursive structure, except
+same recursive structure, except
 
-- `0` or `True` for the empty list
-- `+` or `&&` for the operator
+- `0` or `True` for the base case (i.e., empty list)
+- `+` or `&&` for the operator in the inductive case
 
 ----
 
-Folds "factor out" recursion
+folds "factor out" recursion in functions
 
 > sumF :: (Foldable t, Num b) => t b    -> b
 > sumF  = foldr (+)  0
 
 > andF :: Foldable t          => t Bool -> Bool
 > andF  = foldr (&&) True
-
-----
-
-visualized as
 
 ~~~{.haskell}
      sumF                  andF
@@ -137,16 +133,26 @@ visualized as
 
 ----
 
-`length` follows similar pattern\
-except: ignores value of elements and keeps a counter
+another example: `length`
 
 > lengthE []     = 0
 > lengthE (_:xs) = 1 + lengthE xs
 
-expressed as a fold:
+as a fold
 
 > lengthF :: (Foldable t, Num b) => t a -> b
 > lengthF        = foldr (\_ n -> 1 + n) 0
+
+~~~{.haskell}
+ sumF                  andF                  lengthF
+  +                     &&                      1+
+ / \                   /  \                    /  \
+1   +               True   &&                 _    1+
+   / \                    /  \                    /  \
+  2   +               False   &&                 _    1+
+     / \                     /  \                    /  \
+    3   0                 True  True                _    0
+~~~
 
 ----
 
@@ -154,11 +160,9 @@ to understand how this works, look at def of `foldr` :
 
 ~~~{.haskell}
 foldr :: (a -> b -> b) -> b -> [a] -> b
-foldr f v []     = v
-foldr f v (x:xs) = f x (fold f v xs)
+foldr f z []     = z
+foldr f z (x:xs) = f x (fold f z xs)
 ~~~
-
-`length` visualized (along with the previous examples) as `1+` :
 
 ~~~{.haskell}
  sumF                  andF                  lengthF
@@ -541,14 +545,27 @@ foldr f z (x:xs) = f x (foldr f z xs)
 - the parameters used above can be expressed in terms of a single
 _F-algebra_ `f b -> b` over a functor `f` and carrier `b`
 
-~~~{.haskell}
-foldr :: (Maybe (a, b) -> b) -> [a] -> b
-foldr alg []     = alg $ Nothing
-foldr alg (x:xs) = alg $ Just (x, foldr alg xs)
-~~~
+> foldrP :: (Maybe (a, b) -> b) -> [a] -> b
+> foldrP alg []     = alg Nothing
+> foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
+
+> jp Nothing        = 0
+> jp (Just (a, bs)) = a + bs
+
+> fpl = U.tt "fpl"
+>       [                      foldrP jp [1,2]
+>       ,         jp (Just (1, foldrP jp   [2]))
+>       , 1 +                  foldrP jp   [2]
+>       , 1 +     jp (Just (2, foldrP jp   []))
+>       , 1 + 2 +              foldrP jp   []
+>       , 1 + 2 + jp           Nothing
+>       , 1 + 2 + 0
+>       ]
+>       3
 
 ----
 
+- TODO : why this instead of above?
 - factor out `List a` to `Maybe (a, [a])` isomorphism
 
 > foldrX :: (Maybe (a, b) -> b) -> [a] -> b
@@ -556,6 +573,20 @@ foldr alg (x:xs) = alg $ Just (x, foldr alg xs)
 >   where
 >     unList []     = Nothing
 >     unList (x:xs) = Just (x, xs)
+
+> fxl = U.tt "fxl"
+>       [                            foldrX jp         [1, 2]
+>       ,         (jp . fmap (id *** foldrX jp)) (Just (1,[2]))
+>       ,          jp   (Just (1,    foldrX jp            [2]))
+>       , 1 +                        foldrX jp            [2]
+>       , 1 +     (jp . fmap (id *** foldrX jp)) (Just (2,[]))
+>       , 1 +      jp   (Just (2,    foldrX jp            []))
+>       , 1 + 2 +                    foldrX jp            []
+>       , 1 + 2 + (jp . fmap (id *** foldrX jp)) Nothing
+>       , 1 + 2 +  jp   Nothing
+>       , 1 + 2 + 0
+>       ]
+>       3
 
 - Uses function product \footnote{defined more generally in Control.Arrow}
 
@@ -570,14 +601,11 @@ foldr alg (x:xs) = alg $ Just (x, foldr alg xs)
 >   alg Nothing        = 0
 >   alg (Just (_, xs)) = xs + 1
 
-~~~
- > lengthX "foobar"
- 6
-~~~
+> lx = U.t "lx" (lengthX "foobar") 6
 
 ----
 
-The `foldrX` definition above can literally be read from the commutative diagram below.\footnote{The nodes represent types (objects) and the edges functions (morphisms).}
+`foldrX` can be visualized:\footnote{The nodes represent types (objects) and the edges functions (morphisms).}
 
 \vspace{0.2in}
 \centerline{\resizebox{4in}{!}{%
@@ -595,7 +623,7 @@ The `foldrX` definition above can literally be read from the commutative diagram
 
 ----
 
-- `foldl` can be written in terms of `foldrX` an algebra with a higher-order carrier
+`foldl` can be written in terms of `foldrX` and an algebra with a higher-order carrier
 
 > foldlX :: forall a b. (b -> a -> b) -> [a] -> b -> b
 > foldlX f = foldrX alg where
@@ -617,8 +645,7 @@ Fixed points are represented by:
 > -- | the least fixpoint of functor f
 > newtype Fix f = Fix { unFix :: f (Fix f) }
 
-A functor `f` is a data-type of kind `* -> *` together
-with an `fmap` function.
+A functor `f` is a data-type of kind `* -> *` together with an `fmap` function.
 
 \centerline{$Fix \: f \cong f (f (f (f (f ... $ etc}
 
@@ -631,7 +658,7 @@ with an `fmap` function.
 Data-type generic programming
 -----------------------------
 
-- enables parameterization of functions on the structure (e.g., _shape_) of a data-type
+- enables parameterization of functions on the structure (i.e., _shape_) of a data-type
 - useful for data-types where boilerplate traversal code dominates
 - for recursion schemes, we can\
  capture the pattern as a \
@@ -663,7 +690,7 @@ specifically, we need to fix higher-order functors.}
 
 ----
 
-- working with lists using a data-type generic `cata` combinator requires an “unfixed” type representation
+working with lists using a data-type generic `cata` combinator requires an “unfixed” type representation
 
 > data ListF a r = C a r | N
 
@@ -2113,4 +2140,5 @@ tikz-qtree printer for annotated trees
 >                            f1toList ++ fnullt ++ fnullf ++ f1length ++ f1elemt ++ f1elemf ++
 >                            f1max ++ f1sum ++ f1product ++ f3concat ++ f3concatMap ++ f1findt ++ f1findf ++
 >                            f1traverse ++ f3sequenceA ++ iosequence ++
->                            f2mapAccumL1 ++ f2mapAccumL2 ++ f2mapAccumR1 ++ f2mapAccumR2
+>                            f2mapAccumL1 ++ f2mapAccumL2 ++ f2mapAccumR1 ++ f2mapAccumR2 ++
+>                            fpl ++ fxl ++ lx
