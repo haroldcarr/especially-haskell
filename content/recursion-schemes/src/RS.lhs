@@ -12,30 +12,12 @@ Introduction
 Overview
 ========
 
-\begin{columns}
-\column{0.55\textwidth}
 \begin{itemize}
-\item Foldable \& Traversable
-\item Catamorphisms
-\item Fixed points of Functors
-\item Composing \& Combining Algebras
-\item Working with fixed data-types
-\item Anamorphisms \& Corecursion
-\item Hylomorphisms
-\item Paramorphisms
+\item Explicit Recursion
+\item Factor recursion out of functions with `fold`
+\item Factor recursion out of data with `Fix`
+\item Tour of types of recursion
 \end{itemize}
-\column{0.45\textwidth}
-\begin{itemize}
-\item Compositional data-types
-\item Monadic variants
-\item Apomorphisms
-\item Memoization
-\item Zygomorphisms
-\item Histomorphisms
-\item Futumorphisms
-\item Conclusion
-\end{itemize}
-\end{columns}
 
 ----
 
@@ -65,6 +47,7 @@ Overview
 > import           Control.Monad.Reader  (ReaderT, ask, fix, lift, runReaderT, (<=<))
 > import           Control.Monad.ST      (ST, runST)
 > import           Data.Foldable         (find, fold, toList)
+> import           Data.Functor.Foldable (Fix(..))
 > import           Data.Functor.Identity as DFI (Identity (..))
 > import           Data.Map              as M (Map, fromList, insert, lookup, (!))
 > import           Data.Maybe            (fromMaybe, isJust)
@@ -72,7 +55,7 @@ Overview
 > import           Data.Set              (Set, singleton)
 > import           Data.Traversable      (mapAccumL, mapAccumR)
 > import           Numeric               (readFloat, readSigned)
-> import           Prelude               hiding (lookup)
+> import           Prelude               hiding (lookup, succ)
 > import           System.IO.Unsafe      (unsafePerformIO) -- for a test
 
 ----
@@ -107,6 +90,9 @@ same recursive structure, except
 
 - `0` or `True` for the base case (i.e., empty list)
 - `+` or `&&` for the operator in the inductive case
+
+factor recursion out of functions with `fold`
+============================================
 
 ----
 
@@ -173,9 +159,9 @@ foldr f z (x:xs) = f x (fold f z xs)
     3   0                 True  True                _    0
 ~~~
 
-----
 
-Next: generalize `fold` to work on other types.
+generalize `fold` to work on other types
+========================================
 
 Foldable
 ========
@@ -200,7 +186,7 @@ class Foldable t where
 
 ----
 
-instances by hand
+instances by hand  TODO : make this same as next
 
 ~~~{.haskell}
 data Tree a = Empty | Leaf a | Node (Tree a) (Tree a)
@@ -209,9 +195,6 @@ instance Foldable Tree
   foldMap f Empty      = mempty
   foldMap f (Leaf x)   = f x
   foldMap f (Node l r) = foldMap f l <> foldMap f r
-  ...
-  length = Data.Monoid.getSum .
-             foldMap (const $ Data.Monoid.Sum 1)
 ~~~
 
 ----
@@ -451,19 +434,160 @@ mapAccumR :: Traversable t => (a -> b -> (a, c)) -> a -> t b -> (a, t c)
 >                , B (B (B (L "1-4.0") "2-3.0" E) "3-2.0" (L "4-1.0")) "5-0.0" E
 >                )
 
+factor recursion out of data types with `Fix`
+=============================================
+
+factor recursion out of data types using "pattern functors"" and a fixed-point wrapper
+
+benefits: reason about recursion and base structures separately
+
 ----
 
-What if access to the structure is required?
-----------------------------------------
+applicable to types that have recursive structure (e.g., lists, trees)
 
-i.e., need to work with domain `f a` instead of `a`
+~~~{.haskell}
+data Natural = Zero | Succ Natural
+~~~
+
+factor out recursion by defining base structure
+- with parameterized type at recursive points
+
+> -- must be a functor
+> data NatF r = ZeroF | SuccF r deriving (Show, Functor)
+
+this type called a "pattern functor" for the other type
+
+add recursion to pattern functors via recursive `Fix` wrapper
+
+> type Nat    = Fix NatF
+
+----
+
+example lists and trees
+
+~~~{.haskell}
+data ListF a r = NilF
+               | ConsF a r
+               deriving (Show, Functor)
+
+data TreeF a r = EmptyF
+               | LeafF a
+               | NodeF r r
+              deriving (Show, Functor)
+
+type List a    = Fix (ListF a)
+type Tree a    = Fix (TreeF a)
+~~~
+
+----
+
+smart constructors
+
+> zero     :: Nat
+> zero      = Fix ZeroF
+
+> succ     :: Nat -> Nat
+> succ      = Fix . SuccF
+
+~~~{.haskell}
+nil      :: List a
+nil       = Fix NilF
+
+cons     :: a -> List a -> List a
+cons x xs = Fix (ConsF x xs)
+
+: succ (succ (succ zero))
+Fix (SuccF (Fix (SuccF (Fix (SuccF (Fix ZeroF))))))
+~~~
+
+----
+
+`Fix` definition
+
+~~~{.haskell}
+newtype Fix f = Fix (f (Fix f))
+
+fix          :: f -> Fix f
+fix           = Fix
+~~~
+
+> unFix        :: Fix f -> f (Fix f)
+> unFix (Fix f) = f
+
+- `fix` adds one level of recursion
+- `unfix` removes one level of recursion
+
+`Fix` is "generic" recursive structure
+- write recursive type without using recursion
+- use `Fix` to add recursion
+
+----
+
+working with lists using a data-type generic `cata` combinator requires an “unfixed” type representation
+
+> data ListF a r = C a r | N
+
+- `ListF a r` is not an ordinary functor.  So define a polymorphic functor instance for `ListF a`:
+
+> instance Functor (ListF a) where
+>   fmap _ N        = N
+>   fmap f (C x xs) = C x (f xs)
+
+- Another example: pattern functor for natural numbers:
+
+~~~{.haskell}
+data NatF r = Succ r | Zero deriving Functor
+~~~
 
 Catamorphisms
 =============
 
-cata meaning “downwards” : generalisation of fold
+cata meaning “downwards” : generalized fold
 
 - models (internal) *iteration*
+- goal: write `foldr` once for all data-types
+- category theory shows how to define it generically for a functor fixed-point
+
+----
+
+~~~{.haskell}
+cata :: Functor f => (f a -> a) -> Fix f -> a
+cata alg = alg . fmap (cata alg) . unFix
+~~~
+
+> natToInt :: Nat -> Int
+> natToInt = cata alg where
+>     alg  ZeroF    = 0
+>     alg (SuccF n) = n + 1
+
+=alg= (i.e., "algebra") defines reduction semantics
+- _semantics are not defined recursively_
+- Recursion has been decoupled: handled by `cata`
+
+> ni = U.t "ni" (natToInt (succ (succ (succ zero)))) 3
+
+----
+
+Catamorphism
+------------
+
+\vspace{0.2in}
+\centerline{\resizebox{3in}{!}{%
+\begin{tikzpicture}[node distance=2.75cm, auto, font=\small\sffamily]
+  \node (ffixf) {\bf\it f (Fix f)};
+  \node (fixf) [below of=ffixf] {\bf\it Fix f};
+  \node (fa) [right of=ffixf] {\bf\it f a};
+  \node (a) [right of=fixf] {\bf\it a};
+  \draw[->] (ffixf) to node {\tiny fmap (cata alg)} (fa);
+  \draw[->] (ffixf) to node [swap] {\tiny Fix} (fixf);
+  \draw[->] (fixf) to node [swap] {\tiny cata alg} (a);
+  \draw[->] (fa) to node {\tiny alg} (a);
+\end{tikzpicture}
+}}
+
+----
+
+concrete example
 
 ~~~{.haskell}
 foldr :: (a -> b -> b) -> z -> [a] -> b
@@ -508,7 +632,6 @@ foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
 >   alg (Just (_, xs)) = xs + 1
 
 > lx = U.t "lx" (lengthX "foobar") 6
-
 
 ----
 
@@ -569,111 +692,6 @@ foldrX alg = alg . fmap (id *** foldrX alg) . unList
 \end{tikzpicture}
 }}
 
-Fixed points of Functors
-========================
-
-From category theory : enables:
-
-- data-type generic functions
-- compositional data
-
-Fixed points are represented by:
-
-> -- | the least fixpoint of functor f
-> newtype Fix f = Fix { unFix :: f (Fix f) }
-
-A functor `f` is a data-type of kind `* -> *` together with an `fmap` function.
-
-\centerline{$Fix \: f \cong f (f (f (f (f ... $ etc}
-
-\begin{picture}(0,0)(0,0)
-\put(210,110){\includegraphics[height=1in]{images/nuts-and-bolts.jpg}}
-\end{picture}
-
-----
-
-Data-type generic programming
------------------------------
-
-- enables parameterization of functions on the structure (i.e., _shape_) of a data-type
-- useful for data-types where boilerplate traversal code dominates
-- for recursion schemes, we can\
- capture the pattern as a \
- standalone combinator
-
-\begin{picture}(0,0)(0,0)
-\put(200,-35){\includegraphics[height=1.2in]{images/shapes.jpg}}
-\end{picture}
-
-----
-
-Limitations
------------
-
-- The set of data-types that can be represented\
-by means of Fix is limited to _regular_ data-types\footnote{
-A data-type is regular if it does not contain function spaces
-and if the type constructor arguments are the same on both sides
-of the definition.}
-
-- Nested data-types and mutually recursive\
-data-types require higher-order approaches\footnote{More
-specifically, we need to fix higher-order functors.}
-
-
-\begin{picture}(0,0)(0,0)
-\put(235,-60){\includegraphics[height=0.66in]{images/warning.jpg}}
-\end{picture}
-
-----
-
-working with lists using a data-type generic `cata` combinator requires an “unfixed” type representation
-
-> data ListF a r = C a r | N
-
-- `ListF a r` is not an ordinary functor.  So define a polymorphic functor instance for `ListF a`:
-
-> instance Functor (ListF a) where
->   fmap _ N        = N
->   fmap f (C x xs) = C x (f xs)
-
-- Another example: pattern functor for natural numbers:
-
-> data NatF r = Succ r | Zero deriving Functor
-
-----
-
-Catamorphisms - revisited
--------------------------
-
-- goal: write foldr once for all data-types
-
-- category theory shows how to define it data-type generically for a functor fixed-point
-
-~~~{.haskell}
-cata :: Functor f => (f a -> a) -> Fix f -> a
-cata alg = alg . fmap (cata alg) . unFix
-~~~
-
-----
-
-Catamorphism
-------------
-
-\vspace{0.2in}
-\centerline{\resizebox{3in}{!}{%
-\begin{tikzpicture}[node distance=2.75cm, auto, font=\small\sffamily]
-  \node (ffixf) {\bf\it f (Fix f)};
-  \node (fixf) [below of=ffixf] {\bf\it Fix f};
-  \node (fa) [right of=ffixf] {\bf\it f a};
-  \node (a) [right of=fixf] {\bf\it a};
-  \draw[->] (ffixf) to node {\tiny fmap (cata alg)} (fa);
-  \draw[->] (ffixf) to node [swap] {\tiny Fix} (fixf);
-  \draw[->] (fixf) to node [swap] {\tiny cata alg} (a);
-  \draw[->] (fa) to node {\tiny alg} (a);
-\end{tikzpicture}
-}}
-
 ----
 
 The catamorphism-fusion law
@@ -722,9 +740,11 @@ type is witnessed by the functions `Fix` and `unFix`
 
 It is possible to derive instances for fixed functors (requires `UndecidableInstances`, ...).
 
-> deriving instance Show (f (Fix f)) => Show (Fix f)
-> deriving instance Eq   (f (Fix f)) => Eq   (Fix f)
-> deriving instance Ord  (f (Fix f)) => Ord  (Fix f)
+~~~{.haskell}
+deriving instance Show (f (Fix f)) => Show (Fix f)
+deriving instance Eq   (f (Fix f)) => Eq   (Fix f)
+deriving instance Ord  (f (Fix f)) => Ord  (Fix f)
+~~~
 
 ----
 
@@ -985,11 +1005,10 @@ Some example `Fixpoint` instances
 >   outF (x:xs)  = C x xs
 
 > instance Fixpoint NatF Integer where
->   inF Zero           = 0
->   inF (Succ n)       = n + 1
->   outF n | n > 0     = Succ (n - 1)
->          | otherwise = Zero
-
+>   inF ZeroF          = 0
+>   inF (SuccF n)      = n + 1
+>   outF n | n > 0     = SuccF (n - 1)
+>          | otherwise = ZeroF
 
 Anamorphisms
 ============
@@ -1261,8 +1280,8 @@ Example: computing the factorial
 
 > fact :: Integer -> Integer
 > fact = para alg where
->   alg Zero          = 1
->   alg (Succ (f, n)) = f * (n + 1)
+>   alg ZeroF          = 1
+>   alg (SuccF (f, n)) = f * (n + 1)
 
 $$
 \begin{array}{rcl}
@@ -1775,9 +1794,9 @@ Example: computing Fibonacci numbers
 > fib :: Integer -> Integer
 > fib = histo f where
 >   f :: NatF (Ann NatF Integer) -> Integer
->   f Zero                                        = 0
->   f (Succ (unAnn -> (Zero,_)))                  = 1
->   f (Succ (unAnn -> (Succ (unAnn -> (_,n)),m))) = m + n
+>   f ZeroF                                         = 0
+>   f (SuccF (unAnn -> (ZeroF,_)))                  = 1
+>   f (SuccF (unAnn -> (SuccF (unAnn -> (_,n)),m))) = m + n
 
 $$
 \begin{array}{rcl}
@@ -2078,4 +2097,4 @@ tikz-qtree printer for annotated trees
 >     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++ f2concat ++ f1concatMap ++
 >                            f1traverse ++ f2sequenceA ++ iosequence ++
 >                            f1mapAccumL1 ++ f1mapAccumL2 ++ f1mapAccumR1 ++ f1mapAccumR2 ++
->                            fpl ++ lx ++ fxl
+>                            ni ++ fpl ++ lx ++ fxl
