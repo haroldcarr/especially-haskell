@@ -52,7 +52,7 @@ Overview
 > import           Data.Map              as M (Map, fromList, insert, lookup, (!))
 > import           Data.Maybe            (fromMaybe, isJust)
 > import           Data.Monoid           (Sum (..), getSum, (<>))
-> import           Data.Set              (Set, singleton)
+> import           Data.Set              as S (Set, fromList, singleton)
 > import           Data.Traversable      (mapAccumL, mapAccumR)
 > import           Numeric               (readFloat, readSigned)
 > import           Prelude               hiding (lookup, succ)
@@ -453,52 +453,13 @@ factor out recursion by defining base structure
 - with parameterized type at recursive points
 
 > -- must be a functor
-> data NatF r = ZeroF | SuccF r deriving (Show, Functor)
+> data NatF r = ZeroF | SuccF r deriving (Eq, Functor, Show)
 
 this type called a "pattern functor" for the other type
 
 add recursion to pattern functors via recursive `Fix` wrapper
 
 > type Nat    = Fix NatF
-
-----
-
-example lists and trees
-
-~~~{.haskell}
-data ListF a r = NilF
-               | ConsF a r
-               deriving (Show, Functor)
-
-data TreeF a r = EmptyF
-               | LeafF a
-               | NodeF r r
-              deriving (Show, Functor)
-
-type List a    = Fix (ListF a)
-type Tree a    = Fix (TreeF a)
-~~~
-
-----
-
-smart constructors
-
-> zero     :: Nat
-> zero      = Fix ZeroF
-
-> succ     :: Nat -> Nat
-> succ      = Fix . SuccF
-
-~~~{.haskell}
-nil      :: List a
-nil       = Fix NilF
-
-cons     :: a -> List a -> List a
-cons x xs = Fix (ConsF x xs)
-
-: succ (succ (succ zero))
-Fix (SuccF (Fix (SuccF (Fix (SuccF (Fix ZeroF))))))
-~~~
 
 ----
 
@@ -523,20 +484,52 @@ fix           = Fix
 
 ----
 
-working with lists using a data-type generic `cata` combinator requires an “unfixed” type representation
+smart constructors
 
-> data ListF a r = C a r | N
+> zero     :: Nat
+> zero      = Fix ZeroF
 
-- `ListF a r` is not an ordinary functor.  So define a polymorphic functor instance for `ListF a`:
+> succ     :: Nat -> Nat
+> succ      = Fix . SuccF
 
-> instance Functor (ListF a) where
->   fmap _ N        = N
->   fmap f (C x xs) = C x (f xs)
+> sc = U.t "sc"
+>           (succ       (succ       (succ       zero)))
+>      (Fix (SuccF (Fix (SuccF (Fix (SuccF (Fix ZeroF)))))))
 
-- Another example: pattern functor for natural numbers:
+----
+
+example lists and trees
+
+> data ListF a r = C a r | N deriving (Show, Functor)
 
 ~~~{.haskell}
-data NatF r = Succ r | Zero deriving Functor
+-- derivation
+instance Functor (ListF a) where
+  fmap _ N        = N
+  fmap f (C x xs) = C x (f xs)
+
+type List a    = Fix (ListF a)
+~~~
+
+smart constructors
+
+~~~{.haskell}
+nil      :: List a
+nil       = Fix NilF
+
+cons     :: a -> List a -> List a
+cons x xs = Fix (ConsF x xs)
+~~~
+
+----
+
+~~~{.haskell}
+data TreeF a r = EmptyF
+               | LeafF a
+               | NodeF r r
+              deriving (Show, Functor)
+
+type Tree a    = Fix (TreeF a)
 ~~~
 
 Catamorphisms
@@ -694,10 +687,12 @@ foldrX alg = alg . fmap (id *** foldrX alg) . unList
 
 ----
 
-The catamorphism-fusion law
+catamorphism-fusion law [3]
 ----------------------------
 
-The *catamorphism-fusion law* [3] can be used to transform the composition of a function with a catamorphism into single catamorphism, eliminating intermediate data structures.
+transform composition of a function with a catamorphism into single catamorphism
+
+- eliminates intermediate data structures
 
 $$h \: . \: f = g\: . \: fmap \: h \implies h \: . \: cata \: f = cata \: g$$
 
@@ -715,7 +710,7 @@ h :: a -> b
 
 ----
 
-Example: a simple expression language
+Example: expressions
 -------------------------------------
 
 > data ExprF r = Const Int
@@ -730,23 +725,9 @@ Example: a simple expression language
 
 > type Expr = Fix ExprF
 
+*pattern functor* `ExprF` represents structure of `Expr`
 
-The *pattern functor* `ExprF` represents the structure of type `Expr`
-
-The isomorphism between a data-type and its pattern functor
-type is witnessed by the functions `Fix` and `unFix`
-
-----
-
-It is possible to derive instances for fixed functors (requires `UndecidableInstances`, ...).
-
-~~~{.haskell}
-deriving instance Show (f (Fix f)) => Show (Fix f)
-deriving instance Eq   (f (Fix f)) => Eq   (Fix f)
-deriving instance Ord  (f (Fix f)) => Ord  (Fix f)
-~~~
-
-----
+isomorphism between data-type and its pattern functor type handled by `Fix` and `unFix`
 
 Example: evaluator with global environment
 ------------------------------------------
@@ -760,14 +741,11 @@ Example: evaluator with global environment
 > evalAlg env = alg where
 >   alg (Const c)     = pure c
 >   alg (Var i)       = M.lookup i env
->   alg (Add x y)     = (+)  <$> x <*> y
->   alg (Mul x y)     = (*)  <$> x <*> y
+>   alg (Add x y)     = (+) <$> x <*> y
+>   alg (Mul x y)     = (*) <$> x <*> y
 >   alg (IfNeg t x y) = t >>= bool x y . (<0)
 
 ----
-
-An example expression
----------------------
 
 > e1 :: Fix ExprF
 > e1 = Fix (Mul
@@ -779,8 +757,6 @@ An example expression
 >                   (Fix (Add (Fix (Var "b"))
 >                             (Fix (Const 2))))))
 >                 (Fix (Const 3)))
-
-NB. the `Fix` boilerplate could be removed by defining "smart" constructors.
 
 ----
 
@@ -799,48 +775,24 @@ An example expression
 > testEnv :: Env
 > testEnv = M.fromList [("a",1),("b",3)]
 
-~~~
- > eval testEnv e1
- Just 9
-~~~
-
-----
-
-Example: a pretty printer
--------------------------
-
-> ppr :: Expr -> Doc
-> ppr = cata pprAlg
->
-> pprAlg :: ExprF Doc -> Doc
-> pprAlg (Const c)     = text $ show c
-> pprAlg (Var  i)      = text i
-> pprAlg (Add x y)     = PP.parens $ x <+> text "+" <+> y
-> pprAlg (Mul x y)     = PP.parens $ x <+> text "*" <+> y
-> pprAlg (IfNeg t x y) = PP.parens $ text "ifNeg"   <+> t
->                         <+> text "then" <+> x
->                         <+> text "else" <+> y
-
-~~~
- > ppr e1
- ((ifNeg (1 * a) then (b + 0) else (b + 2)) * 3)
-~~~
+> ee1 = U.t "ee1"
+>       (eval testEnv e1)
+>       (Just 9)
 
 ----
 
 Example: collecting free variables
 ----------------------------------
 
-> freeVars :: Expr -> Set Id
+> freeVars :: Expr -> S.Set Id
 > freeVars = cata alg where
->     alg :: ExprF (Set Id) -> Set Id
->     alg (Var i) = singleton i
->     alg e = fold e
+>     alg :: ExprF (S.Set Id) -> S.Set Id
+>     alg (Var i) = S.singleton i
+>     alg e       = fold e
 
-~~~
- > freeVars e1
- fromList ["a","b"]
-~~~
+> fve1 = U.t "fve1"
+>        (freeVars e1)
+>        (S.fromList ["a","b"])
 
 ----
 
@@ -851,20 +803,18 @@ Example: substituting variables
 > substitute env = cata alg where
 >   alg :: ExprF Expr -> Expr
 >   alg e@(Var i) = fromMaybe (Fix e) $ M.lookup i env
->   alg e = Fix e
+>   alg e         = Fix e
 
-~~~
- > let sub = M.fromList [("b",Fix $ Var "a")]
- > freeVars $ substitute sub e1
- fromList ["a"]
-~~~
-
+> sub = M.fromList [("b",Fix $ Var "a")]
+> svfe1 = U.t "svfe1"
+>         (freeVars $ substitute sub e1)
+>         (S.fromList ["a"])
 
 Composing Algebras
 ==================
 
 - in general, catamorphisms do not compose
-- there is a useful special case
+- useful special case
 
 Example: an optimisation pipeline
 ---------------------------------
@@ -881,7 +831,7 @@ Example: an optimisation pipeline
 
 ----
 
-The following composition works, but involves two complete traversals:
+this composition uses two traversals:
 
 > optimiseSlow :: Expr -> Expr
 > optimiseSlow = cata optAdd . cata optMul
@@ -903,12 +853,12 @@ for arbitrary functors `f` and `g`, this is: \
 
 ----
 
-Now derive a more efficient optimise pipeline:\footnote{In practice, such a pipeline is likely to be iterated until an equality fixpoint is reached, hence efficiency is important.}
+more efficient optimized pipeline:\footnote{In practice, such a pipeline is likely to be iterated until an equality fixpoint is reached, hence efficiency is important.}
 
 > optimiseFast :: Expr -> Expr
 > optimiseFast = cata (optMul . unFix . optAdd)
 
-The above applies the *catamorphism compose law* [3], usually stated in the form:
+above applies *catamorphism compose law* [3]:
 
 ~~~{.haskell}
 f :: f a -> a
@@ -917,19 +867,19 @@ h :: g a -> f a
 cata f . cata (Fix . h) = cata (f . h)
 ~~~
 
-
 Combining Algebras
 ==================
 
-- Algebras over the same functor but different carrier types can be combined as products, such that two or more catamorphisms are performed as one
+Algebras over same functor but different carrier types combined as products
+- now two or more catamorphisms performed as one
 
-Given the following two algebras,
+Given two algebras,
 
 ~~~{.haskell}
 f :: f a -> a;  g :: f b -> b
 ~~~
 
-want an algebra of type `f (a, b) -> (a, b)`
+want algebra of type `f (a, b) -> (a, b)`
 
 - use the *banana-split theorem* [3]:
 
@@ -952,19 +902,17 @@ cata f &&& cata g =
 
 ----
 
-- rewrite the product using `funzip`
+- rewrite the product using `funzip` (unzip for functors)
 
 > algProd :: Functor f =>
 >            (f a -> a) -> (f b -> b) ->
 >            f (a, b) -> (a, b)
 > algProd f g = (f *** g) . funzip
 
-- generalised unzip for functors
-
 > funzip :: Functor f => f (a, b) -> (f a, f b)
 > funzip = fmap fst &&& fmap snd
 
-- can also combine two algebras over different functors but the same carrier type into a coproduct
+- or, combine two algebras over different functors but same carrier type into a coproduct
 
 > algCoprod :: (f a -> a) -> (g a -> a) ->
 >              Either (f a) (g a) -> a
@@ -1507,23 +1455,6 @@ For example, annotating each node with the sizes of all subtrees:
 
 > sizes :: (Functor f, Foldable f) => Fix f -> Ann f Int
 > sizes = synthesize $ (+1) . sum
-
-----
-
-A pretty-printing catamorphism over such an annotated tree:
-
-> pprAnn :: Pretty a => Ann ExprF a -> Doc
-> pprAnn = cata alg where
->   alg (AnnF (d, a)) = pprAlg d <+>
->                       text "@" <+> pretty a
-
-~~~
- > pprAnn $ sizes e1
- ((ifNeg (1 @ 1 * a @ 1) @ 3
-    then (b @ 1 + 0 @ 1) @ 3
-    else (b @ 1 + 2 @ 1) @ 3) @ 10
-      * 3 @ 1) @ 12
-~~~
 
 ----
 
@@ -2097,4 +2028,4 @@ tikz-qtree printer for annotated trees
 >     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++ f2concat ++ f1concatMap ++
 >                            f1traverse ++ f2sequenceA ++ iosequence ++
 >                            f1mapAccumL1 ++ f1mapAccumL2 ++ f1mapAccumR1 ++ f1mapAccumR2 ++
->                            ni ++ fpl ++ lx ++ fxl
+>                            sc ++ ni ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1
