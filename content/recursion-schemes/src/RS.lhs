@@ -55,7 +55,7 @@ Overview
 > import           Data.Set              as S (Set, fromList, singleton)
 > import           Data.Traversable      (mapAccumL, mapAccumR)
 > import           Numeric               (readFloat, readSigned)
-> import           Prelude               hiding (lookup, succ)
+> import           Prelude               hiding (lookup, replicate, succ)
 > import           System.IO.Unsafe      (unsafePerformIO) -- for a test
 
 ----
@@ -69,7 +69,7 @@ Third-party Hackage packages
 > import qualified Data.HashTable.Class          as H (insert, lookup, new)
 > import qualified Data.HashTable.ST.Cuckoo      as C (HashTable)
 > import           Test.HUnit                    (Counts, Test (TestList), runTestTT)
-> import qualified Test.HUnit.Util               as U (e, t, tt)
+> import qualified Test.HUnit.Util               as U (t, tt)
 > import           Text.Parsec.Prim              (ParsecT)
 > import           Text.ParserCombinators.Parsec hiding (many, space, (<|>))
 > import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
@@ -158,7 +158,6 @@ foldr f z (x:xs) = f x (fold f z xs)
      / \                     /  \                    /  \
     3   0                 True  True                _    0
 ~~~
-
 
 generalize `fold` to work on other types
 ========================================
@@ -500,25 +499,18 @@ smart constructors
 
 example lists and trees
 
-> data ListF a r = C a r | N deriving (Show, Functor)
+> data ListF a r = C a r | N deriving (Eq, Functor, Show)
+> type List a    = Fix (ListF a)
+> nil           :: List a
+> nil            = Fix N
+> cons          :: a -> List a -> List a
+> cons x xs      = Fix (C x xs)
 
 ~~~{.haskell}
 -- derivation
 instance Functor (ListF a) where
   fmap _ N        = N
   fmap f (C x xs) = C x (f xs)
-
-type List a    = Fix (ListF a)
-~~~
-
-smart constructors
-
-~~~{.haskell}
-nil      :: List a
-nil       = Fix NilF
-
-cons     :: a -> List a -> List a
-cons x xs = Fix (ConsF x xs)
 ~~~
 
 ----
@@ -531,6 +523,17 @@ data TreeF a r = EmptyF
 
 type Tree a    = Fix (TreeF a)
 ~~~
+
+----
+
+now can use
+
+- catamorphisms : `cata` : folds
+- anamorphisms  : `ana`  : unfolds
+- hylomorphisms : `hylo` : anamorphisms followed by catamorphisms
+                           (corecursive production followed by recursive consumption)
+- paramorphisms : `para` : folds with access to input arg
+                           corresponding to most recent state of computation
 
 Catamorphisms
 =============
@@ -560,6 +563,16 @@ cata alg = alg . fmap (cata alg) . unFix
 > ni = U.t "ni" (natToInt (succ (succ (succ zero)))) 3
 
 ----
+
+> filterL :: (a -> Bool) -> List a -> List a
+> filterL p = cata alg where
+>     alg  N                   = nil
+>     alg (C x xs) | p x       = cons x xs
+>                  | otherwise = xs
+
+> fi = U.t "fi"
+>      (filterL even (cons 1 (cons 2 nil)))
+>      (cons 2 nil)
 
 Catamorphism
 ------------
@@ -833,8 +846,16 @@ Example: an optimisation pipeline
 
 this composition uses two traversals:
 
-> optimiseSlow :: Expr -> Expr
-> optimiseSlow = cata optAdd . cata optMul
+> optimizeSlow :: Expr -> Expr
+> optimizeSlow = cata optAdd . cata optMul
+
+> os = U.t "os"
+>      (optimizeSlow e1)
+>      (Fix (Mul (Fix (IfNeg (Fix (Var "a"))
+>                      (Fix (Var "b"))
+>                      (Fix (Add (Fix (Var "b"))
+>                            (Fix (Const 2))))))
+>            (Fix (Const 3))))
 
 An algebra composition operator is needed to enable *short-cut fusion*:
 
@@ -855,8 +876,12 @@ for arbitrary functors `f` and `g`, this is: \
 
 more efficient optimized pipeline:\footnote{In practice, such a pipeline is likely to be iterated until an equality fixpoint is reached, hence efficiency is important.}
 
-> optimiseFast :: Expr -> Expr
-> optimiseFast = cata (optMul . unFix . optAdd)
+> optimizeFast :: Expr -> Expr
+> optimizeFast = cata (optMul . unFix . optAdd)
+
+> opf = U.t "opf"
+>       (optimizeSlow e1)
+>       (optimizeFast e1)
 
 above applies *catamorphism compose law* [3]:
 
@@ -902,7 +927,7 @@ cata f &&& cata g =
 
 ----
 
-- rewrite the product using `funzip` (unzip for functors)
+- rewrite product using `funzip` (unzip for functors)
 
 > algProd :: Functor f =>
 >            (f a -> a) -> (f b -> b) ->
@@ -911,6 +936,10 @@ cata f &&& cata g =
 
 > funzip :: Functor f => f (a, b) -> (f a, f b)
 > funzip = fmap fst &&& fmap snd
+
+TODO: example usage
+
+----
 
 - or, combine two algebras over different functors but same carrier type into a coproduct
 
@@ -925,10 +954,13 @@ cata f &&& cata g =
 (|||) = either
 ~~~
 
+TODO: example usage
+
 Working with fixed data-types
 =============================
 
-Can use type classes and functional dependencies to transparently apply the isomorphism between the unfixed representation and the original fixed type, e.g. `[a]` for lists.
+type classes and functional dependencies to (transparently) apply
+isomorphism between (un)fixed representations
 
 > class Functor f => Fixpoint f t | t -> f where
 >   inF  :: f t -> t
@@ -939,7 +971,7 @@ Can use type classes and functional dependencies to transparently apply the isom
 
 ----
 
-Some example `Fixpoint` instances
+example `Fixpoint` instances
 ---------------------------------
 
 > instance Functor f => Fixpoint f (Fix f) where
@@ -961,9 +993,9 @@ Some example `Fixpoint` instances
 Anamorphisms
 ============
 
-An *anamorphism* (ana meaning “upwards”) is a generalisation of the concept of an unfold.
+ana meaning “upwards” : generalized unfold
 
-- The corecursive dual of catamorphisms
+- corecursive dual of catamorphisms
 - produces streams and other regular structures from a seed
 - `ana` for lists is `unfoldr` (view patterns help see the duality)
 
@@ -979,33 +1011,39 @@ foldrP f (x:xs) = f (Just (x, foldrP f xs))
 
 ----
 
-Example: replicate the supplied seed by a given number
+examples
 ------------------------------------------------------
 
 > replicate :: Int -> a -> [a]
 > replicate n0 x = unfoldr c n0 where
->   c 0 = Nothing
->   c n = Just (x, n-1)
+>     c 0 = Nothing
+>     c n = Just (x, n-1)
 
-~~~
- > replicate 4 '*'
- "****"
-~~~
-
-----
-
-Example: split a list using a predicate
----------------------------------------
+> rep = U.t "rep" (replicate 4 '*') "****"
 
 > linesBy :: (t -> Bool) -> [t] -> [[t]]
 > linesBy p = unfoldr c where
->     c []     = Nothing
->     c xs     = Just $ second (drop 1) $ break p xs
+>     c []  = Nothing
+>     c xs  = Just $ second (drop 1) $ break p xs
 
-~~~
- > linesBy (==',') "foo,bar,baz"
- ["foo","bar","baz"]
-~~~
+> lb = U.t "lb"
+>      (linesBy (==',') "foo,bar,baz")
+>      ["foo","bar","baz"]
+
+----
+
+> intToNat :: Int -> Nat
+> intToNat = ana coalg where
+>     coalg n | n <= 0    = ZeroF
+>             | otherwise = SuccF (n - 1)
+
+`coalg` (i.e., "coalgebra")
+
+recursion is not part of the semantics
+
+> itn = U.t "itn"
+>       (intToNat 3)
+>       (Fix (SuccF (Fix (SuccF (Fix (SuccF (Fix ZeroF)))))))
 
 ----
 
@@ -2028,4 +2066,5 @@ tikz-qtree printer for annotated trees
 >     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++ f2concat ++ f1concatMap ++
 >                            f1traverse ++ f2sequenceA ++ iosequence ++
 >                            f1mapAccumL1 ++ f1mapAccumL2 ++ f1mapAccumR1 ++ f1mapAccumR2 ++
->                            sc ++ ni ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1
+>                            sc ++ ni ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
+>                            os ++ opf ++ rep ++ lb ++ itn
