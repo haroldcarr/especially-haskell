@@ -46,9 +46,10 @@ Overview
 > import           Control.Arrow         (first, second, (&&&), (***), (|||))
 > import           Control.Monad.Reader  (ReaderT, ask, fix, lift, runReaderT, (<=<))
 > import           Control.Monad.ST      (ST, runST)
-> import           Data.Foldable         (find, fold, toList)
+> import           Data.Foldable         (fold)
 > import           Data.Functor.Foldable (Fix(..))
 > import           Data.Functor.Identity as DFI (Identity (..))
+> import           Data.List.Ordered     as O (merge)
 > import           Data.Map              as M (Map, fromList, insert, lookup, (!))
 > import           Data.Maybe            (fromMaybe, isJust)
 > import           Data.Monoid           (Sum (..), getSum, (<>))
@@ -73,7 +74,7 @@ Third-party Hackage packages
 > import           Text.Parsec.Prim              (ParsecT)
 > import           Text.ParserCombinators.Parsec hiding (many, space, (<|>))
 > import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
-> import qualified Text.PrettyPrint.Leijen       as PP (brackets, parens, (<>))
+> import qualified Text.PrettyPrint.Leijen       as PP (brackets, (<>))
 
 Explicit Recursion
 ==================
@@ -465,12 +466,13 @@ add recursion to pattern functors via recursive `Fix` wrapper
 `Fix` definition
 
 ~~~{.haskell}
-newtype Fix f = Fix (f (Fix f))
+newtype Fix f = Fix { unFix :: f (Fix f) }
 
 fix          :: f -> Fix f
 fix           = Fix
 ~~~
 
+> -- think of `unFix` as
 > unFix        :: Fix f -> f (Fix f)
 > unFix (Fix f) = f
 
@@ -480,6 +482,32 @@ fix           = Fix
 `Fix` is "generic" recursive structure
 - write recursive type without using recursion
 - use `Fix` to add recursion
+
+Working with fixed data-types
+=============================
+
+type classes and functional dependencies to (transparently) apply
+isomorphism between (un)fixed representations
+
+> class Functor f => Fixpoint f t | t -> f where
+>   inF  :: f t -> t
+>   outF :: t -> f t
+
+----
+
+example `Fixpoint` instances
+---------------------------------
+
+> instance Functor f => Fixpoint f (Fix f) where
+>   inF  = Fix
+>   outF = unFix
+
+> instance Fixpoint NatF Integer where
+>   inF ZeroF          = 0
+>   inF (SuccF n)      = n + 1
+>   outF n | n > 0     = SuccF (n - 1)
+>          | otherwise = ZeroF
+
 
 ----
 
@@ -524,6 +552,12 @@ data TreeF a r = EmptyF
 type Tree a    = Fix (TreeF a)
 ~~~
 
+> instance Fixpoint (ListF a) [a] where
+>   inF N        = []
+>   inF (C x xs) = x : xs
+>   outF []      = N
+>   outF (x:xs)  = C x xs
+
 ----
 
 now can use
@@ -546,10 +580,13 @@ cata meaning “downwards” : generalized fold
 
 ----
 
-~~~{.haskell}
-cata :: Functor f => (f a -> a) -> Fix f -> a
-cata alg = alg . fmap (cata alg) . unFix
-~~~
+-~~~{.haskell}
+-cata :: Functor f => (f a -> a) -> Fix f -> a
+-cata alg = alg . fmap (cata alg) . unFix
+-~~~
+
+> cata :: Fixpoint f t => (f a -> a) -> t -> a
+> cata alg = alg . fmap (cata alg) . outF
 
 > natToInt :: Nat -> Int
 > natToInt = cata alg where
@@ -956,39 +993,8 @@ TODO: example usage
 
 TODO: example usage
 
-Working with fixed data-types
-=============================
-
-type classes and functional dependencies to (transparently) apply
-isomorphism between (un)fixed representations
-
-> class Functor f => Fixpoint f t | t -> f where
->   inF  :: f t -> t
->   outF :: t -> f t
-
-> cata :: Fixpoint f t => (f a -> a) -> t -> a
-> cata alg = alg . fmap (cata alg) . outF
-
 ----
 
-example `Fixpoint` instances
----------------------------------
-
-> instance Functor f => Fixpoint f (Fix f) where
->   inF  = Fix
->   outF = unFix
-
-> instance Fixpoint (ListF a) [a] where
->   inF N        = []
->   inF (C x xs) = x : xs
->   outF []      = N
->   outF (x:xs)  = C x xs
-
-> instance Fixpoint NatF Integer where
->   inF ZeroF          = 0
->   inF (SuccF n)      = n + 1
->   outF n | n > 0     = SuccF (n - 1)
->          | otherwise = ZeroF
 
 Anamorphisms
 ============
@@ -1061,32 +1067,42 @@ Given two sorted lists, `mergeLists` merges them into one sorted list.
 >   c (x:xs, y:ys) | x <= y = Just (x, (xs, y:ys))
 >                  | x > y  = Just (y, (x:xs, ys))
 
-~~~
- > mergeLists [1,4] [2,3,5]
- [1,2,3,4,5]
-~~~
+> ml = U.t "ml"
+>      (mergeLists [1,4] [2,3,5])
+>      [1,2,3,4,5]
 
 ----
 
 Corecursion
 -----------
 
-An anamorphism is an example of *corecursion*, the dual of recursion.
-Corecursion produces (potentially infinite) codata, whereas ordinary recursion consumes (necessarily finite) data.
+anamorphism is *corecursive*, the dual of catamorphisms/recursion
 
-- Using `cata` or `ana` only, programs are guaranteed to terminate
-- But not all programs can be written in terms of just `cata` or `ana`
+corecursion produces (potentially infinite) *codata*
+
+recursion consumes (necessarily finite) *data*
 
 ----
 
 There is no enforced distinction between data and codata in Haskell,
-so use of `Fix` again\footnote{In total functional languages like Agda and Coq, it is required to make this distinction.}
+so use of `Fix` again
+
+-~~~{.haskell}
+-cata :: Functor f => (f a -> a) -> Fix f -> a
+-cata alg = alg . fmap (cata alg) . unFix
+-~~~
 
 > -- | anamorphism
 > ana :: Functor f => (a -> f a) -> a -> Fix f
 > ana coalg = Fix . fmap (ana coalg) . coalg
 
-It is often useful to try to enforce this distinction, especially when working with streams.
+----
+
+to distinquish data/codata (useful when working with streams)
+
+~~~{.haskell}
+newtype Fix f = Fix { unFix :: f (Fix f) }
+~~~
 
 > -- | The greatest fixpoint of functor f
 > newtype Cofix f = Cofix { unCofix :: f (Cofix f) }
@@ -1119,29 +1135,32 @@ Anamorphism
 Example: coinductive streams
 ----------------------------
 
-> data StreamF a r = S a r deriving Show
+> -- like `List` but no base case (i.e., Nil)
+> data StreamF a r = S a r deriving (Functor, Show)
 > type Stream a = Cofix (StreamF a)
 
-> instance Functor (StreamF a) where
->   fmap f (S x xs) = S x (f xs)
+~~~{.haskell}
+-- derived
+instance Functor (StreamF a) where
+  fmap f (S x xs) = S x (f xs)
+~~~
 
-stream constructor:
+constructor
 
 > consS :: a -> Cofix (StreamF a) -> Cofix (StreamF a)
 > consS x xs = Cofix (S x xs)
 
-stream deconstructors:
+deconstructors:
 
 > headS :: Cofix (StreamF a) -> a
 > headS (unCofix -> (S x _ )) = x
-> 
+>
 > tailS :: Cofix (StreamF a) -> Cofix (StreamF a)
 > tailS (unCofix -> (S _ xs)) = xs
 
 ----
 
-- the function `iterateS` generates an infinite stream using the supplied iterator and seed
-
+> -- generates infinite stream
 > iterateS :: (a -> a) -> a -> Stream a
 > iterateS f = ana' c where
 >   c x = S x (f x)
@@ -1149,17 +1168,22 @@ stream deconstructors:
 > s1 :: Stream Integer
 > s1 = iterateS (+1) 1
 
-~~~
- > takeS 6 $ s1
- [1,2,3,4,5,6]
-~~~
+> takeS :: Int -> Stream a -> [a]
+> takeS 0 _                   = []
+> takeS n (unCofix -> S x xs) = x : takeS (n-1) xs
+
+> ts = U.t "ts"
+>      (takeS 6 s1)
+>      [1,2,3,4,5,6]
 
 
 Hylomorphism
 ============
 
-A *hylomorphism* is the composition of a catamorphism and an anamorphism.
+composition of catamorphism and anamorphism
 
+— corecursive codata production followed by recursive data consumption
+- can express general computation
 - models *general recursion*
 - enables replacing any recursive control structure with a data structure
 - a representation enables exploiting parallelism
@@ -1167,7 +1191,7 @@ A *hylomorphism* is the composition of a catamorphism and an anamorphism.
 > hylo :: Functor f => (f b -> b) -> (a -> f a) -> a -> b
 > hylo g h = cata g . ana h
 
-NB. hylomorphisms are **Turing complete**, so termination is not guaranteed.
+NB. termination not guaranteed
 
 ----
 
@@ -1183,6 +1207,8 @@ Giving:
 hylo f g = f . fmap (hylo f g) . g
 ~~~
 
+Does not require the full structure built up for i.e. =cata= and =ana=.
+
 NB. this transformation is the basis for *deforestation*, eliminating intermediate data structures.
 
 - `cata` and `ana` could be defined as:
@@ -1197,33 +1223,61 @@ ana  g = hylo Fix g
 Example: Merge sort
 -------------------
 
-We use a tree data-type to capture the divide-and-conquer pattern of recursion.
+use tree data-type to capture divide-and-conquer pattern of recursion.
 
 > data LTreeF a r = Leaf a | Bin r r
 
 > merge :: Ord a => LTreeF a [a] -> [a]
 > merge (Leaf x)    = [x]
 > merge (Bin xs ys) = mergeLists xs ys
->
+
 > unflatten :: [a] -> LTreeF a [a]
 > unflatten [x]                = Leaf x
 > unflatten (half -> (xs, ys)) = Bin xs ys
->
 
 > half :: [a] -> ([a], [a])
 > half xs = splitAt (length xs `div` 2) xs
 
 ----
 
-- merge-sort can be implemented as a hylomorphism
+- implemented as a hylomorphism
 
 > msort :: Ord a => [a] -> [a]
-> msort = hylo merge unflatten
+> msort = hylo RS.merge unflatten
 
-~~~
- > msort [7,6,3,1,5,4,2]
- [1,2,3,4,5,6,7]
-~~~
+> msrt = U.t "msrt"
+>        (msort [7,6,3,1,5,4,2::Int])
+>        [1,2,3,4,5,6,7]
+
+----
+
+- TODO : another version
+
+- input : list containing orderable type
+- build balanced binary tree via anamorphism
+- fold it with a catamorphism
+    - merging lists together and sorting as it goes
+
+> data TreeF a r = EmptyF
+>                | LeafF a
+>                | NodeF r r
+>                deriving (Functor, Show)
+>
+> mergeSort :: Ord a => [a] -> [a]
+> mergeSort = hylo alg coalg where
+>     alg EmptyF      = []
+>     alg (LeafF c)   = [c]
+>     alg (NodeF l r) = O.merge l r
+>     coalg []        = EmptyF
+>     coalg [x]       = LeafF x
+>     coalg xs        = NodeF l r where
+>        (l, r)       = splitAt (length xs `div` 2) xs
+
+Note the fusion.
+
+> mst = U.t "mst"
+>        (mergeSort [7,6,3,1,5,4,2::Int])
+>        [1,2,3,4,5,6,7]
 
 \begin{picture}(0,0)(0,0)
 \put(165,-50){\resizebox{2in}{!}{%
@@ -1236,11 +1290,11 @@ We use a tree data-type to capture the divide-and-conquer pattern of recursion.
 Paramorphisms
 =============
 
-A *paramorphism* (para meaning “beside”) is an extension of the concept of a catamorphism.
+para meaning “beside” : extension of catamorphism
 
 - models *primitive recursion* over an inductive type
 - enables access to the original input structures
-- very useful in practice!
+- operates on algebra that provides access to input arg corresponding to running state of the recursion
 
 For a pattern functor, a paramorphism is:
 
@@ -1258,11 +1312,11 @@ For better efficiency, modify the original cata definition:
 
 ----
 
-Example: computing the factorial
+Example: factorial
 --------------------------------
 
-- This is the classic example of primitive recursion
-- The usual Haskell example `fact n = foldr (*) [1..n]` is actually an unfold followed by a fold
+- classic example of primitive recursion
+- usual `fact n = foldr (*) [1..n]` is unfold followed by fold
 
 > fact :: Integer -> Integer
 > fact = para alg where
@@ -1271,15 +1325,32 @@ Example: computing the factorial
 
 $$
 \begin{array}{rcl}
-0! & = & 1 \\
+0!     & = & 1 \\
 (n+1)! & = & n! * (n+1) \\
 \end{array}
 $$
 
-~~~
- > fact 10
- 3628800
-~~~
+> fct = U.t "fct" (fact 10) 3628800
+
+----
+
+> natpred :: Nat -> Nat
+> natpred = para alg where
+>     alg  ZeroF         = zero
+>     alg (SuccF (n, _)) = n
+
+> np = U.t "np"
+>      (natpred (succ (succ (succ zero))))
+>      zero --- TODO WRONG : needs Fixpoint?
+
+> tailL :: List a -> List a
+> tailL = para alg where
+>     alg  N            = nil
+>     alg (C _ (l, _)) = l
+
+> tl = U.t "tl"
+>      (tailL (cons 1 (cons 2 nil)))
+>      (Fix N) -- TODO WRONG : needs Fixpoint?
 
 ----
 
@@ -1291,12 +1362,11 @@ Example: sliding window
 >   alg N             = []
 >   alg (C x (r, xs)) = take n (x:xs) : r
 
-NB. the lookahead via the input argument is left-to-right, whereas the input list is processed from the right.
+NB. lookahead via input arg is left-to-right, but input list processed from the right
 
-~~~
- > sliding 3 [1..5]
- [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
-~~~
+> sl = U.t "sl"
+>      (sliding 3 [1..5::Int])
+>      [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
 
 ----
 
@@ -1314,6 +1384,8 @@ Example: collecting all catamorphism sub-results
 >      v  = alg $ fmap (m' M.!) ft
 >      m' = fold fm
 >
+
+TODO: needs ppr
 
 ~~~
  > let m = cataTrace (evalAlg testEnv) $ optimiseFast e1
@@ -1925,15 +1997,6 @@ Expr Hashable instance
 
 ----
 
-stream utilities
-----------------
-
-> takeS :: Int -> Stream a -> [a]
-> takeS 0 _                   = []
-> takeS n (unCofix -> S x xs) = x : takeS (n-1) xs
-
-----
-
 unfixed JSON data-type
 ----------------------
 
@@ -2067,4 +2130,5 @@ tikz-qtree printer for annotated trees
 >                            f1traverse ++ f2sequenceA ++ iosequence ++
 >                            f1mapAccumL1 ++ f1mapAccumL2 ++ f1mapAccumR1 ++ f1mapAccumR2 ++
 >                            sc ++ ni ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
->                            os ++ opf ++ rep ++ lb ++ itn
+>                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ msrt ++ mst ++ fct ++
+>                            np ++ tl ++ sl
