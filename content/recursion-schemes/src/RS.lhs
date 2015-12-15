@@ -571,7 +571,7 @@ now can use
 Catamorphisms
 =============
 
-cata meaning “downwards” : generalized fold
+*cata* meaning *downwards* : generalized fold
 
 - models (internal) *iteration*
 - goal: write `foldr` once for all data-types
@@ -579,10 +579,10 @@ cata meaning “downwards” : generalized fold
 
 ----
 
--~~~{.haskell}
--cata :: Functor f => (f a -> a) -> Fix f -> a
--cata alg = alg . fmap (cata alg) . unFix
--~~~
+~~~{.haskell}
+cata :: Functor f => (f a -> a) -> Fix f -> a
+cata alg = alg . fmap (cata alg) . unFix
+~~~
 
 > cata :: Fixpoint f t => (f a -> a) -> t -> a
 > cata alg = alg . fmap (cata alg) . outF
@@ -932,7 +932,7 @@ cata f . cata (Fix . h) = cata (f . h)
 Anamorphisms
 ============
 
-ana meaning “upwards” : generalized unfold
+*ana* meaning *upwards* : generalized unfold
 
 - corecursive dual of catamorphisms
 - produces streams and other regular structures from a seed
@@ -1020,10 +1020,10 @@ recursion consumes (necessarily finite) *data*
 There is no enforced distinction between data and codata in Haskell,
 so use of `Fix` again
 
--~~~{.haskell}
--cata :: Functor f => (f a -> a) -> Fix f -> a
--cata alg = alg . fmap (cata alg) . unFix
--~~~
+~~~{.haskell}
+cata :: Functor f => (f a -> a) -> Fix f -> a
+cata alg = alg . fmap (cata alg) . unFix
+~~~
 
 > -- | anamorphism
 > ana :: Functor f => (a -> f a) -> a -> Fix f
@@ -1115,7 +1115,7 @@ Hylomorphism
 
 composition of catamorphism and anamorphism
 
-— corecursive codata production followed by recursive data consumption
+- corecursive codata production followed by recursive data consumption
 - can express general computation
 - models *general recursion*
 - enables replacing any recursive control structure with a data structure
@@ -1187,7 +1187,7 @@ note the fusion
 Paramorphisms
 =============
 
-para meaning “beside” : extension of catamorphism
+*para* meaning *beside* : extension of catamorphism
 
 - models *primitive recursion* over an inductive type
 - enables access to the original input structures
@@ -1269,7 +1269,7 @@ NB. lookahead via input arg is left-to-right, but input list processed from the 
 Apomorphisms
 ===========
 
-apo meaning “apart” : categorical dual of paramorphism and extension anamorphism (coinduction) [6].
+*apo* meaning *apart* : categorical dual of paramorphism and extension anamorphism (coinduction) [6].
 
 - models *primitive corecursion* over a coinductive type
 - enables short-circuiting traversal and immediately deliver a result
@@ -1553,8 +1553,8 @@ TODO: example usage
 Compositional Data-types
 ========================
 
-- “Unfixed” types can be composed in a modular fashion
-- REF: *Data types \a`a la carte* [4]
+- Unfixed types can be composed in a modular fashion
+- REF: *Data types a la carte* [4]
 
 > -- | coproduct of pattern functors f and g
 > data (f :+: g) r = Inl (f r) | Inr (g r)
@@ -1610,7 +1610,7 @@ Fill all the holes of type `a` in the template `Ctx f a` using the supplied func
 
 Example: add template variables to JSON by composing data types and parsers.
 
-- need an “unfixed” JSON datatype and parser (see appendix)
+- need an "unfixed" JSON datatype and parser (see appendix)
 
 ~~~{.haskell}
 pJSValueF :: CharParser () r ->
@@ -1882,24 +1882,24 @@ Table: schemes we discussed in this talk
 References
 ==========
 
-[1] J. Gibbons, “Origami programming.”, The Fun of Programming, Palgrave, 2003.
+[1] J. Gibbons, "Origami programming.", The Fun of Programming, Palgrave, 2003.
 
-[2] C. McBride & R. Paterson, “Applicative programming with effects”, Journal of Functional Programming, vol. 18, no. 01, pp. 1-13, 2008.
+[2] C. McBride & R. Paterson, "Applicative programming with effects", Journal of Functional Programming, vol. 18, no. 01, pp. 1-13, 2008.
 
-[3] E. Meijer, “Functional Programming with Bananas , Lenses , Envelopes and Barbed Wire”, 1991.
+[3] E. Meijer, "Functional Programming with Bananas , Lenses , Envelopes and Barbed Wire", 1991.
 
-[4] W. Swierstra, “Data types à la carte”, Journal of Functional Programming, vol. 18, no. 04, pp. 423–436, Mar. 2008.
+[4] W. Swierstra, "Data types a la carte", Journal of Functional Programming, vol 18, no. 04, pp. 423-435, Mar. 2008.
 
 ----
 
-[5] L. Augusteijn, “Sorting morphisms” pp. 1–23. 3rd International Summer School on Advanced Functional Programming, volume 1608 of LNCS, 1998.
+[5] L. Augusteijn, "Sorting morphisms" pp. 1-23, 3rd International Summer School on Advanced Functional Programming, volume 1608 of LNCS, 1998.
 
-[6] V. Vene, “Functional Programming with Apomorphisms (Corecursion)” pp. 147–161, 1998.
+[6] V. Vene, "Functional Programming with Apomorphisms (Corecursion)" pp. 147-161, 1988.
 
-[7] T. Uustalu & V. Venu, “Primitive (Co)Recursion and Course-of-Value (Co)Iteration, Categorically” Informatica, Vol. 10, No. 1, 5–26, 1999.
+[7] T. Uustalu & V. Venu, "Primitive (Co)Recursion and Course-of-Value (Co)Iteration, Categorically" Informatica, Vol. 10, No. 1, 5-26, 1999.
 
+Tim Williams's recursion schemes presentation
 
-Tim Williams’s recursion schemes presentation
 - http://www.timphilipwilliams.com/slides.html
 - https://www.youtube.com/watch?v=Zw9KeP3OzpU
 
