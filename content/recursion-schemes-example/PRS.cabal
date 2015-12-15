@@ -9,17 +9,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     PRS
-                     , RS
   build-depends:       base
-                     , bool-extras
-                     , containers
                      , data-ordlist
-                     , hashable
-                     , hashtables
-                     , HUnit
-                     , mtl
-                     , parsec
                      , recursion-schemes
-                     , test-hunit-util
-                     , wl-pprint
   default-language:    Haskell2010
