@@ -32,7 +32,6 @@ Overview
 > {-# LANGUAGE MultiParamTypeClasses  #-}
 > {-# LANGUAGE RankNTypes             #-}
 > {-# LANGUAGE ScopedTypeVariables    #-}
-> {-# LANGUAGE StandaloneDeriving     #-}
 > {-# LANGUAGE TupleSections          #-}
 > {-# LANGUAGE TypeOperators          #-}
 > {-# LANGUAGE UndecidableInstances   #-}
@@ -43,14 +42,14 @@ Overview
 > module RS where
 >
 > import           Control.Applicative   (empty, many, (<|>))
-> import           Control.Arrow         (first, second, (&&&), (***), (|||))
+> import           Control.Arrow         (second, (&&&), (***), (|||))
 > import           Control.Monad.Reader  (ReaderT, ask, fix, lift, runReaderT, (<=<))
 > import           Control.Monad.ST      (ST, runST)
 > import           Data.Foldable         (fold)
 > import           Data.Functor.Foldable (Fix(..))
 > import           Data.Functor.Identity as DFI (Identity (..))
 > import           Data.List.Ordered     as O (merge)
-> import           Data.Map              as M (Map, fromList, insert, lookup, (!))
+> import           Data.Map              as M (Map, fromList, lookup)
 > import           Data.Maybe            (fromMaybe, isJust)
 > import           Data.Monoid           (Sum (..), getSum, (<>))
 > import           Data.Set              as S (Set, fromList, singleton)
@@ -929,72 +928,6 @@ h :: g a -> f a
 cata f . cata (Fix . h) = cata (f . h)
 ~~~
 
-Combining Algebras
-==================
-
-Algebras over same functor but different carrier types combined as products
-- now two or more catamorphisms performed as one
-
-Given two algebras,
-
-~~~{.haskell}
-f :: f a -> a;  g :: f b -> b
-~~~
-
-want algebra of type `f (a, b) -> (a, b)`
-
-- use the *banana-split theorem* [3]:
-
-~~~{.haskell}
-cata f &&& cata g =
-    cata ( f . fmap fst &&&
-           g . fmap snd )
-~~~
-
-- Uses fan-out or _fork_ \footnote{defined more generally in Control.Arrow}
-
-~~~{.haskell}
-(&&&) :: (b -> c) -> (b -> d) -> b -> (c, d)
-(f &&& g) x = (f x, g x)
-~~~
-
-\begin{picture}(0,0)(0,0)
-\put(225,20){\includegraphics[height=0.8in]{images/banana-split.png}}
-\end{picture}
-
-----
-
-- rewrite product using `funzip` (unzip for functors)
-
-> algProd :: Functor f =>
->            (f a -> a) -> (f b -> b) ->
->            f (a, b) -> (a, b)
-> algProd f g = (f *** g) . funzip
-
-> funzip :: Functor f => f (a, b) -> (f a, f b)
-> funzip = fmap fst &&& fmap snd
-
-TODO: example usage
-
-----
-
-- or, combine two algebras over different functors but same carrier type into a coproduct
-
-> algCoprod :: (f a -> a) -> (g a -> a) ->
->              Either (f a) (g a) -> a
-> algCoprod = (|||)
-
-- Uses fan-in \footnote{defined more generally in Control.Arrow}
-
-~~~{.haskell}
-(|||) ::: (b -> d) -> (c -> d) -> Either b c -> d
-(|||) = either
-~~~
-
-TODO: example usage
-
-----
-
 
 Anamorphisms
 ============
@@ -1207,7 +1140,7 @@ Giving:
 hylo f g = f . fmap (hylo f g) . g
 ~~~
 
-Does not require the full structure built up for i.e. =cata= and =ana=.
+does not require the full structure built up for i.e. `cata`` and `ana`
 
 NB. this transformation is the basis for *deforestation*, eliminating intermediate data structures.
 
@@ -1225,55 +1158,19 @@ Example: Merge sort
 
 use tree data-type to capture divide-and-conquer pattern of recursion.
 
-> data LTreeF a r = Leaf a | Bin r r
-
-> merge :: Ord a => LTreeF a [a] -> [a]
-> merge (Leaf x)    = [x]
-> merge (Bin xs ys) = mergeLists xs ys
-
-> unflatten :: [a] -> LTreeF a [a]
-> unflatten [x]                = Leaf x
-> unflatten (half -> (xs, ys)) = Bin xs ys
-
-> half :: [a] -> ([a], [a])
-> half xs = splitAt (length xs `div` 2) xs
-
-----
-
-- implemented as a hylomorphism
-
-> msort :: Ord a => [a] -> [a]
-> msort = hylo RS.merge unflatten
-
-> msrt = U.t "msrt"
->        (msort [7,6,3,1,5,4,2::Int])
->        [1,2,3,4,5,6,7]
-
-----
-
-- TODO : another version
-
-- input : list containing orderable type
 - build balanced binary tree via anamorphism
 - fold it with a catamorphism
     - merging lists together and sorting as it goes
 
-> data TreeF a r = EmptyF
->                | LeafF a
->                | NodeF r r
->                deriving (Functor, Show)
->
 > mergeSort :: Ord a => [a] -> [a]
 > mergeSort = hylo alg coalg where
->     alg EmptyF      = []
->     alg (LeafF c)   = [c]
->     alg (NodeF l r) = O.merge l r
->     coalg []        = EmptyF
->     coalg [x]       = LeafF x
->     coalg xs        = NodeF l r where
+>     alg (Leaf c)   = [c]
+>     alg (Bin xs ys) = O.merge xs ys
+>     coalg [x]       = Leaf x
+>     coalg xs        = Bin l r where
 >        (l, r)       = splitAt (length xs `div` 2) xs
 
-Note the fusion.
+note the fusion
 
 > mst = U.t "mst"
 >        (mergeSort [7,6,3,1,5,4,2::Int])
@@ -1337,20 +1234,20 @@ $$
 > natpred :: Nat -> Nat
 > natpred = para alg where
 >     alg  ZeroF         = zero
->     alg (SuccF (n, _)) = n
+>     alg (SuccF (_, n)) = n
 
 > np = U.t "np"
 >      (natpred (succ (succ (succ zero))))
->      zero --- TODO WRONG : needs Fixpoint?
+>      (succ (succ zero))
 
 > tailL :: List a -> List a
 > tailL = para alg where
 >     alg  N            = nil
->     alg (C _ (l, _)) = l
+>     alg (C _ (_, l)) = l
 
 > tl = U.t "tl"
->      (tailL (cons 1 (cons 2 nil)))
->      (Fix N) -- TODO WRONG : needs Fixpoint?
+>      (tailL (cons 1 (cons (2::Int) nil)))
+>      (cons 2 nil)
 
 ----
 
@@ -1368,32 +1265,290 @@ NB. lookahead via input arg is left-to-right, but input list processed from the 
 >      (sliding 3 [1..5::Int])
 >      [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
 
+
+Apomorphisms
+===========
+
+apo meaning “apart” : categorical dual of paramorphism and extension anamorphism (coinduction) [6].
+
+- models *primitive corecursion* over a coinductive type
+- enables short-circuiting traversal and immediately deliver a result
+
+> apo :: Fixpoint f t => (a -> f (Either a t)) -> a -> t
+> apo coa = inF . fmap (apo coa ||| id) . coa
+
+- can also be expressed in terms of an anamorphism
+
+~~~{.haskell}
+apo :: Fixpoint f t => (a -> f (Either a t)) -> a -> t
+apo coa = ana (coa ||| fmap Right . outF) . Left
+~~~
+
 ----
 
-Example: collecting all catamorphism sub-results
-------------------------------------------------
+uses apomorphism to generate
+- new insertion step when `x>y`
+- short-circuits to final result when `x<=y`
 
-> cataTrace :: forall f a.
->   (Functor f, Ord (f (Fix f)), Foldable f) =>
->   (f a -> a) -> Fix f -> Map (Fix f) a
-> cataTrace alg = para phi where
->   phi :: f (Map (Fix f) a, Fix f) -> Map (Fix f) a
->   phi (funzip -> (fm, ft)) = M.insert k v m'
->    where
->      k  = Fix ft
->      v  = alg $ fmap (m' M.!) ft
->      m' = fold fm
+> insertElem :: forall a. Ord a => ListF a [a] -> [a]
+> insertElem = apo c where
+>   c :: ListF a [a] ->
+>        ListF a (Either (ListF a [a]) [a])
+>   c N                     = N
+>   c (C x [])              = C x (Left N)
+>   c (C x (y:xs)) | x <= y = C x (Right (y:xs))
+>                  | x > y  = C y (Left (C x xs))
+
+> ie = U.t "ie"
+>      (insertElem (C 3 [1::Int,2,5]))
+>      [1,2,3,5]
+
+----
+
+insert every element of supplied list into a new list, using `cata`
+
+> insertionSort :: Ord a => [a] -> [a]
+> insertionSort = cata insertElem
+
+> iss = U.t "iss"
+>       (insertionSort [5,9,3,1::Int,2])
+>       [1,2,3,5,9]
+
+Zygomorphism
+============
+
+- asymmetric mutual iteration
+    - both a data consumer and an auxiliary function are defined
+- a generalisation of paramorphisms
+
+> algZygo :: Functor f =>
+>     (f  b     -> b) ->
+>     (f (a, b) -> a) ->
+>     f (a, b) -> (a, b)
+> algZygo f g = g &&& f . fmap snd
+
+> zygo :: Functor f =>
+>         (f b -> b) -> (f (a, b) -> a) -> Fix f -> a
+> zygo f g = fst . cata (algZygo f g)
+
+----
+
+Example: using evaluation to find discontinuities
+-------------------------------------------------
+
+count number of live conditionals causing discontinuities due to an arbitrary supplied environment,
+in a single traversal.
+
+`discontAlg` : one of its embedded arguments, result of evaluating current term using env
+
+> discontAlg :: ExprF (Sum Int, Maybe Int) -> Sum Int
+> discontAlg (IfNeg (t, tv) (x, xv) (y, yv))
+>   | isJust xv, isJust yv, xv == yv =  t <> x <> y
+>   | otherwise = maybe (Sum 1 <> t <> x <> y)
+>                       (bool (t <> y) (t <> x) . (<0)) tv
+> discontAlg e = fold . fmap fst $ e
+
+note: check for redundant live conditionals for which both branches evaluate to same value
+
+----
+
+> -- | number of live conditionals
+> disconts :: Env -> Expr -> Int
+> disconts env = getSum . zygo (evalAlg env) discontAlg
+
+- expression `e2` is a function of variables `a` and `b`
+
+> e2 :: Fix ExprF
+> e2 = Fix (IfNeg (Fix (Var "b")) e1 (Fix (Const 4)))
+
+> fve2 = U.t "fve2"
+>        (freeVars e2)
+>        (S.fromList ["a","b"])
+
+----
+
+- by supplying `disconts` with a value for `b`, can look for discontinuities with respect to a new function over just `a`
+
+> ofe2 = U.t "ofe2"
+>        (optimizeFast e2)
+>        (Fix
+>         (IfNeg (Fix (Var "b"))
+>          (Fix (Mul (Fix (IfNeg (Fix (Var "a"))
+>                          (Fix (Var "b"))
+>                          (Fix (Add (Fix (Var "b")) (Fix (Const 2))))))
+>                (Fix (Const 3))))
+>          (Fix (Const 4))))
+
+> di = U.t "di"
+>      (disconts (M.fromList [("b",-1)]) e2)
+>      1
+
+
+Histomorphism
+=============
+
+- REF: introduced by Uustalu & Venu in 1999 [7]
+- models *course-of-value recursion* : enables using arbitrary previously computed values
+- useful for applying dynamic programming techniques to recursive structures
+
+moves bottom-up annotating tree with results
+then collapses tree producing result
+
+> -- | Histomorphism
+> histo :: Fixpoint f t => (f (Ann f a) -> a) -> t -> a
+> histo alg = attr . cata (ann . (id &&& alg))
+
+----
+
+Example: computing Fibonacci numbers
+------------------------------------
+
+> fib :: Integer -> Integer
+> fib = histo f where
+>   f :: NatF (Ann NatF Integer) -> Integer
+>   f ZeroF                                         = 0
+>   f (SuccF (unAnn -> (ZeroF,_)))                  = 1
+>   f (SuccF (unAnn -> (SuccF (unAnn -> (_,n)),m))) = m + n
+
+$$
+\begin{array}{rcl}
+F_0 & = & 0 \\
+F_1 & = & 1 \\
+F_n & = & F_{n-1} + F_{n-2} \\
+\end{array}
+$$
+
+> fibt = U.t "fibt"
+>        (fib 100)
+>        354224848179261915075
+
+----
+
+Example: filtering by position
+------------------------------
+
+The function `evens` takes every second element from the given list.
+
+> evens :: [a] -> [a]
+> evens = histo alg where
+>   alg N                      = []
+>   alg (C _ (strip -> N    )) = []
+>   alg (C _ (strip -> C x y)) = x : attr y
+
+> ev = U.t "ev"
+>      (evens [1..7::Int])
+>      [2,4,6]
+
+
+Futumorphism
+============
+
+- REF: introduced by Uustalu & Venu in 1999 [7]
+- the corecursive dual of the histomorphism
+- models *course-of-value* coiteration
+- allows us to produce one or more levels
+
+> futu :: Functor f => (a -> f (Ctx f a)) -> a -> Cofix f
+> futu coa = ana' ((coa ||| id) . unCtx) . hole
+
+> -- | deconstruct values of type Ctx f a
+> unCtx :: Ctx f a -> Either a (f (Ctx f a))
+> unCtx c = case unFix c of
+>   Hole x -> Left x
+>   Term t -> Right t
+
+> term :: f (Fix (CtxF f a)) -> Fix (CtxF f a)
+> term = Fix . Term
 >
+> hole :: a -> Fix (CtxF f a)
+> hole = Fix . Hole
 
-TODO: needs ppr
+----
 
+Example: stream processing
+--------------------------
+
+pairwise exchanges elements of stream
+
+> exch :: Stream a -> Stream a
+> exch = futu coa where
+>   coa xs = S (headS $ tailS xs)
+>              (term $ S (headS xs)
+>                        (hole $ tailS $ tailS xs))
+
+> exs = U.t "exs"
+>       (takeS 10 $ exch s1)
+>       [2,1,4,3,6,5,8,7,10,9]
+
+ADVANCED TODO
+=============
+
+
+Combining Algebras
+==================
+
+Algebras over same functor but different carrier types combined as products
+- now two or more catamorphisms performed as one
+
+Given two algebras,
+
+~~~{.haskell}
+f :: f a -> a;  g :: f b -> b
 ~~~
- > let m = cataTrace (evalAlg testEnv) $ optimiseFast e1
- > map (first ppr) $ M.toList m
- [(2,Just 2),(3,Just 3),(a,Just 1),(b,Just 3),
-  ((b + 2),Just 5), ...
+
+want algebra of type `f (a, b) -> (a, b)`
+
+- use the *banana-split theorem* [3]:
+
+~~~{.haskell}
+cata f &&& cata g =
+    cata ( f . fmap fst &&&
+           g . fmap snd )
 ~~~
 
+- Uses fan-out or _fork_ \footnote{defined more generally in Control.Arrow}
+
+~~~{.haskell}
+(&&&) :: (b -> c) -> (b -> d) -> b -> (c, d)
+(f &&& g) x = (f x, g x)
+~~~
+
+\begin{picture}(0,0)(0,0)
+\put(225,20){\includegraphics[height=0.8in]{images/banana-split.png}}
+\end{picture}
+
+----
+
+- rewrite product using `funzip` (unzip for functors)
+
+> algProd :: Functor f =>
+>            (f a -> a) -> (f b -> b) ->
+>            f (a, b) -> (a, b)
+> algProd f g = (f *** g) . funzip
+
+> funzip :: Functor f => f (a, b) -> (f a, f b)
+> funzip = fmap fst &&& fmap snd
+
+TODO: example usage
+
+----
+
+- or, combine two algebras over different functors but same carrier type into a coproduct
+
+> algCoprod :: (f a -> a) -> (g a -> a) ->
+>              Either (f a) (g a) -> a
+> algCoprod = (|||)
+
+- Uses fan-in \footnote{defined more generally in Control.Arrow}
+
+~~~{.haskell}
+(|||) ::: (b -> d) -> (c -> d) -> Either b c -> d
+(|||) = either
+~~~
+
+TODO: example usage
+
+----
 
 Compositional Data-types
 ========================
@@ -1401,16 +1556,16 @@ Compositional Data-types
 - “Unfixed” types can be composed in a modular fashion
 - REF: *Data types \a`a la carte* [4]
 
-> -- | The coproduct of pattern functors f and g
+> -- | coproduct of pattern functors f and g
 > data (f :+: g) r = Inl (f r) | Inr (g r)
 
-> -- | The product of pattern functors f and g
+> -- | product of pattern functors f and g
 > data (f :*: g) r = (f r) :*: (g r)
 
-> -- | The free monad pattern functor
+> -- | free monad pattern functor
 > data FreeF f a r = FreeF (f r) | Pure a
 
-> -- | The cofree comonad pattern functor
+> -- | cofree comonad pattern functor
 > data CofreeF f a r = CofreeF (f r) a
 
 \begin{picture}(0,0)(0,0)
@@ -1423,7 +1578,7 @@ Example: Templating
 -------------------
 
 - type-safe templating requires a syntax tree with holes
-- parse a string template into such a tree, then fill the holes
+- parse a string template into tree, then fill holes
 
 Use a *free monad* structure `Ctx f a` to represent a node with
 either a term of type `f` or a hole of type `a`.
@@ -1704,221 +1859,6 @@ memoize :: Enumerable k => (k -> v) -> k -> v
 
 **WARNING** this could result in a slowdown unless your algebra is significantly more expensive than a hash computation!
 
-
-Apomorphism
-===========
-
-An *apomorphism* (apo meaning “apart”) is the categorical dual of a paramorphism and an extension of the concept of anamorphism (coinduction) [6].
-
-- models *primitive corecursion* over a coinductive type
-- allows us to short-circuit the traversal and immediately deliver a result
-
-> apo :: Fixpoint f t => (a -> f (Either a t)) -> a -> t
-> apo coa = inF . fmap (apo coa ||| id) . coa
-
-- can also be expressed in terms of an anamorphism
-
-~~~{.haskell}
-apo :: Fixpoint f t => (a -> f (Either a t)) -> a -> t
-apo coa = ana (coa ||| fmap Right . outF) . Left
-~~~
-
-----
-
-The function `insertElem` uses an apomorphism to generate a new insertion step
-when `x>y`, but short-circuits to the final result when `x<=y`
-
-> insertElem :: forall a. Ord a => ListF a [a] -> [a]
-> insertElem = apo c where
->   c :: ListF a [a] ->
->        ListF a (Either (ListF a [a]) [a])
->   c N                     = N
->   c (C x [])              = C x (Left N)
->   c (C x (y:xs)) | x <= y = C x (Right (y:xs))
->                  | x > y  = C y (Left (C x xs))
-
-----
-
-To implement insertion sort, insert every element of the supplied list into a new list, using `cata`.
-
-> insertionSort :: Ord a => [a] -> [a]
-> insertionSort = cata insertElem
-
-
-Zygomorphism
-============
-
-- asymmetric form of mutual iteration, where both a data consumer and an auxiliary function are defined
-- a generalisation of paramorphisms
-
-
-> algZygo :: Functor f =>
->     (f  b     -> b) ->
->     (f (a, b) -> a) ->
->     f (a, b) -> (a, b)
-> algZygo f g = g &&& f . fmap snd
-
-> zygo :: Functor f =>
->         (f b -> b) -> (f (a, b) -> a) -> Fix f -> a
-> zygo f g = fst . cata (algZygo f g)
-
-
-----
-
-Example: using evaluation to find discontinuities
--------------------------------------------------
-
-The aim is to count the number of live conditionals causing discontinuities due to an arbitrary supplied environment, in a single traversal.
-
-`discontAlg` takes as one of its embedded arguments, the result of evaluating the current term using the environment.
-
-> discontAlg :: ExprF (Sum Int, Maybe Int) -> Sum Int
-> discontAlg (IfNeg (t, tv) (x, xv) (y, yv))
->   | isJust xv, isJust yv, xv == yv =  t <> x <> y
->   | otherwise = maybe (Sum 1 <> t <> x <> y)
->                       (bool (t <> y) (t <> x) . (<0)) tv
-> discontAlg e = fold . fmap fst $ e
-
-Note: have to check for redundant live conditionals for which both branches evaluate to the same value.
-
-----
-
-> -- | number of live conditionals
-> disconts :: Env -> Expr -> Int
-> disconts env = getSum . zygo (evalAlg env) discontAlg
-
-- expression `e2` is a function of variables `a` and `b`
-
-> e2 :: Fix ExprF
-> e2 = Fix (IfNeg (Fix (Var "b")) e1 (Fix (Const 4)))
-
-~~~
- >  freeVars e2
- fromList ["a","b"]
-~~~
-
-----
-
-- by supplying `disconts` with a value for `b`, can look for discontinuities with respect to a new function over just `a`
-
-~~~
- > ppr . optimiseFast $ e2
- (ifNeg b
-   then
-     ((ifNeg a then b else (b + 2)) * 3)
-   else
-     4)
-
- > disconts (M.fromList [("b",-1)]) e2
- 1
-~~~
-
-
-Histomorphism
-=============
-
-- REF: introduced by Uustalu & Venu in 1999 [7]
-- models *course-of-value recursion* : enables using arbitrary previously computed values
-- useful for applying dynamic programming techniques to recursive structures
-
-A histomorphism moves bottom-up annotating the tree with results and finally collapses the tree producing the end result.
-
-> -- | Histomorphism
-> histo :: Fixpoint f t => (f (Ann f a) -> a) -> t -> a
-> histo alg = attr . cata (ann . (id &&& alg))
-
-----
-
-Example: computing Fibonacci numbers
-------------------------------------
-
-> fib :: Integer -> Integer
-> fib = histo f where
->   f :: NatF (Ann NatF Integer) -> Integer
->   f ZeroF                                         = 0
->   f (SuccF (unAnn -> (ZeroF,_)))                  = 1
->   f (SuccF (unAnn -> (SuccF (unAnn -> (_,n)),m))) = m + n
-
-$$
-\begin{array}{rcl}
-F_0 & = & 0 \\
-F_1 & = & 1 \\
-F_n & = & F_{n-1} + F_{n-2} \\
-\end{array}
-$$
-
-~~~
- > fib 100
- 354224848179261915075
-~~~
-
-----
-
-Example: filtering by position
-------------------------------
-
-The function `evens` takes every second element from the given list.
-
-> evens :: [a] -> [a]
-> evens = histo alg where
->   alg N                      = []
->   alg (C _ (strip -> N    )) = []
->   alg (C _ (strip -> C x y)) = x : attr y
-
-~~~
- > evens [1..6]
-[2,4,6]
-~~~
-
-
-Futumorphism
-============
-
-- REF: introduced by Uustalu & Venu in 1999 [7]
-- the corecursive dual of the histomorphism
-- models *course-of-value* coiteration
-- allows us to produce one or more levels
-
-> futu :: Functor f => (a -> f (Ctx f a)) -> a -> Cofix f
-> futu coa = ana' ((coa ||| id) . unCtx) . hole
-
-> -- | deconstruct values of type Ctx f a
-> unCtx :: Ctx f a -> Either a (f (Ctx f a))
-> unCtx c = case unFix c of
->   Hole x -> Left x
->   Term t -> Right t
-
-> term :: f (Fix (CtxF f a)) -> Fix (CtxF f a)
-> term = Fix . Term
->
-> hole :: a -> Fix (CtxF f a)
-> hole = Fix . Hole
-
-----
-
-Example: stream processing
---------------------------
-
-The function `exch` pairwise exchanges the elements of any given stream.
-
-> exch :: Stream a -> Stream a
-> exch = futu coa where
->   coa xs = S (headS $ tailS xs)
->              (term $ S (headS xs)
->                        (hole $ tailS $ tailS xs))
->
-
-~~~
- > takeS 10 $ exch s1
- [2,1,4,3,6,5,8,7,10,9]
-~~~
-
- (1,(2,(3,(4,(5, ...
- (2,(1,(3,(4,(5, ...
- (2,(1,(4,(3,(5, ...
- etc
-
-
 Conclusion
 ==========
 
@@ -1958,6 +1898,10 @@ References
 
 [7] T. Uustalu & V. Venu, “Primitive (Co)Recursion and Course-of-Value (Co)Iteration, Categorically” Informatica, Vol. 10, No. 1, 5–26, 1999.
 
+
+Tim Williams’s recursion schemes presentation
+- http://www.timphilipwilliams.com/slides.html
+- https://www.youtube.com/watch?v=Zw9KeP3OzpU
 
 Appendix
 ========
@@ -2079,6 +2023,8 @@ simple unfixed JSON parser
 
 ----
 
+> data LTreeF a r = Leaf a | Bin r r
+
 LTreeF functor instance
 -----------------------
 
@@ -2130,5 +2076,6 @@ tikz-qtree printer for annotated trees
 >                            f1traverse ++ f2sequenceA ++ iosequence ++
 >                            f1mapAccumL1 ++ f1mapAccumL2 ++ f1mapAccumR1 ++ f1mapAccumR2 ++
 >                            sc ++ ni ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
->                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ msrt ++ mst ++ fct ++
->                            np ++ tl ++ sl
+>                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ mst ++ fct ++
+>                            np ++ tl ++ sl ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
+>                            exs
