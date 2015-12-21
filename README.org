@@ -27,3 +27,4 @@ pushd content/graphviz-example; make clean all; popd
 * -TODO-
 - auto create '.generated' directories
 - use Shake instead of Make
+- understand: http://stackoverflow.com/questions/34334773/why-do-we-need-containers/34346484#34346484

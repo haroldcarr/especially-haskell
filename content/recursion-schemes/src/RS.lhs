@@ -53,10 +53,8 @@ Overview
 > import           Data.Maybe            (fromMaybe, isJust)
 > import           Data.Monoid           (Sum (..), getSum, (<>))
 > import           Data.Set              as S (Set, fromList, singleton)
-> import           Data.Traversable      (mapAccumL, mapAccumR)
 > import           Numeric               (readFloat, readSigned)
-> import           Prelude               hiding (lookup, replicate, succ)
-> import           System.IO.Unsafe      (unsafePerformIO) -- for a test
+> import           Prelude               as P hiding (replicate, succ)
 
 ----
 
@@ -93,10 +91,6 @@ same recursive structure, except
 
 factor recursion out of functions with `fold`
 ============================================
-
-----
-
-folds "factor out" recursion in functions
 
 > sumF :: (Foldable t, Num b) => t b    -> b
 > sumF  = foldr (+)  0
@@ -159,52 +153,23 @@ foldr f z (x:xs) = f x (fold f z xs)
     3   0                 True  True                _    0
 ~~~
 
-generalize `fold` to work on other types
+Foldable : generalize `fold` to work on other types
 ========================================
-
-Foldable
-========
 
 Process elements of a structure one-at-a-time, discarding the structure.
 
 ~~~{.haskell}
 class Foldable t where
-
-  -- | Combine elements of structure using a monoid.
-  fold :: Monoid m => t m -> m
-
-  -- | Map each element of structure to a monoid
-  -- and combine results.
-  foldMap :: Monoid m => (a -> m) -> t a -> m
-
   -- | Right-associative fold of structure.
   foldr :: (a -> b -> b) -> b -> t a -> b
-
-  -- ...
 ~~~
 
-----
-
-instances by hand  TODO : make this same as next
-
-~~~{.haskell}
-data Tree a = Empty | Leaf a | Node (Tree a) (Tree a)
-
-instance Foldable Tree
-  foldMap f Empty      = mempty
-  foldMap f (Leaf x)   = f x
-  foldMap f (Node l r) = foldMap f l <> foldMap f r
-~~~
-
-----
-
-or derive using `{-# LANGUAGE DeriveFoldable #-}`
+derive using `{-# LANGUAGE DeriveFoldable #-}`
 
 > data Tree a = E
 >             | L a
 >             | B (Tree a) a (Tree a)
->             deriving (Eq, Foldable, Functor
->                      , Show, Traversable)
+>             deriving (Eq, Foldable, Functor, Show)
 
 ----
 
@@ -226,6 +191,22 @@ Example data
 
 Foldable typeclass operations
 =============================
+
+~~~{.haskell}
+-- | Right-associative fold of structure.
+foldr :: (a -> b -> b) -> b -> t a -> b
+~~~
+
+> f1foldr  = U.t "f1foldr"
+>            (foldr (+) 0 f1)
+>            15
+> f1foldr2 = U.t "f1foldr2"
+>            (foldr ((++) . show) "" f1)
+>            "12345"
+
+----
+
+Other `Foldable` operations
 
 ~~~{.haskell}
 -- | Combine elements of structure using a monoid.
@@ -269,16 +250,6 @@ class Monoid a where
 ----
 
 ~~~{.haskell}
--- | Right-associative fold of structure.
-foldr :: (a -> b -> b) -> b -> t a -> b
-~~~
-
-> f1foldr     = U.t "f1foldr"
->               (foldr (+) 0 f1)            15
-> f1foldr2    = U.t "f1foldr2"
->               (foldr ((++) . show) "" f1) "12345"
-
-~~~{.haskell}
 -- | foldr with no base case. For non-empty structures.
 foldr1 :: (a -> a -> a) -> t a -> a
 
@@ -312,137 +283,23 @@ product :: Num a => t a -> a
 
 non-TC functions on `Foldable`
 
-~~~{.haskell}
-concat :: Foldable t => t [a] -> [a]
-~~~
-
-> f2concat    = U.t "f2concat"
->               (concat f2)                 [1,2,3,4,5]
-
-~~~{.haskell}
-concatMap :: Foldable t => (a -> [b]) -> t a -> [b]
-~~~
-
-> f1concatMap = U.t "f1concatMap"
->               (concatMap show f1)         "12345"
-
-> -- and, or, any, all,
-> -- maximumBy, minimumBy,
-> -- notElem, find
-
-Traversable
-===========
-
-Traverse a structure, from left-to-right, performing an effectful action on each element, preserving the structure.
-
-- `fmap` with "effects"
-- _Applicative Programming with Effects_, McBride/Paterson
-
-~~~{.haskell}
-class (Functor t, Foldable t) => Traversable t where
-  ...
-~~~
-
-instances by hand
-
-~~~{.haskell}
-instance Traversable Tree where
-  traverse f Empty      = pure Empty
-  traverse f (Leaf x)   = Leaf <$> f x
-  traverse f (Node k r) =
-      Node <$> traverse f l <*> traverse f r
-~~~
-
-or derive using `{-# LANGUAGE DeriveTraversable #-}`
-
-Typeclass functions
-===================
-
-~~~{.haskell}
--- | Map each element of structure to an action,
--- evaluate the actions left to right, collect the results.
-traverse :: Applicative f => (a -> f b) -> t a -> f (t b)
-~~~
-
-> f1traverse  = U.t "f1traverse"
->               (traverse (\x -> [show x]) f1)
->               [B (B (B (L "1") "2" E) "3" (L "4")) "5" E]
-
-~~~{.haskell}
--- | Evaluate each action in structure from left to right,
--- collect the results.
-sequenceA :: Applicative f => t (f a) -> f (t a)
-~~~
-
-> f2sequenceA = U.t "f2sequenceA"
->               (sequenceA f2)
->               [B (B (B (L  1)   2  E)  3  (L  4))   5  E]
-
-----
-
-~~~{.haskell}
--- | Map each element of structure to a monadic action,
--- evaluate the actions left to right, collect the results.
-mapM :: Monad m => (a -> m b) -> t a -> m (t b)
-~~~
-
-> -- TODO mapM example
-
-~~~{.haskell}
--- | Evaluate each monadic action in structure
--- from left to right, collect the results.
-sequence :: Monad m => t (m a) -> m (t a)
-~~~
-
-> iosequence  = U.t "iosequence"
->               (unsafePerformIO (sequence [putStrLn "a", putStrLn "b"]))
->               [(),()]  -- :: IO [()]
-
-non-TC functions on `Traversable`
-==============================
-
-~~~{.haskell}
--- | Behaves like a combination of 'fmap' and 'foldr'
--- applies function to each element of structure,
--- passing an accumulating parameter from left to right,
--- returning final value of accumulator and new structure.
-mapAccumR :: Traversable t => (a -> b -> (a, c)) -> a -> t b -> (a, t c)
-~~~
-
-> f1mapAccumL1 = U.t "f1mapAccumL1"
->                (mapAccumL (\a b -> (a+1 , show b)) 0.0 f1)
->                ( 5.0
->                , B (B (B (L "1") "2" E) "3" (L "4")) "5" E
->                )
->
-> f1mapAccumL2 = U.t "f1mapAccumL2"
->                (mapAccumL (\a b -> (a+1, show b ++ "-" ++ show a)) 0.0 f1)
->                ( 5.0
->                , B (B (B (L "1-0.0") "2-1.0" E) "3-2.0" (L "4-3.0")) "5-4.0" E
->                )
->
-> f1mapAccumR1 = U.t "f1mapAccumR1"
->                (mapAccumR (\a b -> (a+1 , show b)) 0.0 f1)
->                ( 5.0
->                , B (B (B (L "1") "2" E) "3" (L "4")) "5" E
->                )
->
-> f1mapAccumR2 = U.t "f1mapAccumR2"
->                (mapAccumR (\a b -> (a+1, show b ++ "-" ++ show a)) 0.0 f1)
->                ( 5.0
->                , B (B (B (L "1-4.0") "2-3.0" E) "3-2.0" (L "4-1.0")) "5-0.0" E
->                )
+- concat, concatMap,
+- and, or, any, all,
+- maximumBy, minimumBy,
+- notElem, find
 
 factor recursion out of data types with `Fix`
 =============================================
 
-factor recursion out of data types using "pattern functors"" and a fixed-point wrapper
-
 benefits: reason about recursion and base structures separately
 
-----
-
 applicable to types that have recursive structure (e.g., lists, trees)
+
+~~~{.haskell}
+data Natural = Zero | Succ Natural
+~~~
+
+----
 
 ~~~{.haskell}
 data Natural = Zero | Succ Natural
@@ -452,7 +309,8 @@ factor out recursion by defining base structure
 - with parameterized type at recursive points
 
 > -- must be a functor
-> data NatF r = ZeroF | SuccF r deriving (Eq, Functor, Show)
+> data NatF r = ZeroF | SuccF r
+>             deriving (Eq, Functor, Show)
 
 this type called a "pattern functor" for the other type
 
@@ -507,7 +365,6 @@ example `Fixpoint` instances
 >   outF n | n > 0     = SuccF (n - 1)
 >          | otherwise = ZeroF
 
-
 ----
 
 smart constructors
@@ -559,7 +416,7 @@ type Tree a    = Fix (TreeF a)
 
 ----
 
-now can use
+now can use library functions for
 
 - catamorphisms : `cata` : folds
 - anamorphisms  : `ana`  : unfolds
@@ -567,6 +424,7 @@ now can use
                            (corecursive production followed by recursive consumption)
 - paramorphisms : `para` : folds with access to input arg
                            corresponding to most recent state of computation
+- ...
 
 Catamorphisms
 =============
@@ -592,11 +450,42 @@ cata alg = alg . fmap (cata alg) . unFix
 >     alg  ZeroF    = 0
 >     alg (SuccF n) = n + 1
 
-=alg= (i.e., "algebra") defines reduction semantics
+`alg` (i.e., "algebra") defines reduction semantics
 - _semantics are not defined recursively_
-- Recursion has been decoupled: handled by `cata`
+- recursion has been decoupled: handled by `cata`
 
 > ni = U.t "ni" (natToInt (succ (succ (succ zero)))) 3
+
+----
+
+> nia :: Num a => NatF a -> a
+> nia  ZeroF    = 0
+> nia (SuccF n) = n + 1
+
+~~~{.haskell}
+instance Functor NatF where
+    fmap _ ZeroF     = ZeroF
+    fmap f (SuccF z) = SuccF (f z)
+~~~
+
+> ni2 = U.tt "ni2"
+>   [ natToInt                            (succ       (succ       zero))
+>   , natToInt                       (Fix (SuccF (Fix (SuccF (Fix ZeroF)))))
+>   ,              cata nia          (Fix (SuccF (Fix (SuccF (Fix ZeroF)))))
+>   , (nia . fmap (cata nia) . outF) (Fix (SuccF (Fix (SuccF (Fix ZeroF)))))
+>   , (nia . fmap (cata nia))             (SuccF (Fix (SuccF (Fix ZeroF))))
+>   ,  nia (SuccF (cata nia                      (Fix (SuccF (Fix ZeroF)))))
+>   , 1 +          cata nia                      (Fix (SuccF (Fix ZeroF)))
+>   , 1 +   (nia . fmap (cata nia) . outF)       (Fix (SuccF (Fix ZeroF)))
+>   , 1 +   (nia . fmap (cata nia))                   (SuccF (Fix ZeroF))
+>   , 1 +    nia (SuccF (cata nia                            (Fix ZeroF)))
+>   , 1 + 1 +            cata nia                            (Fix ZeroF)
+>   , 1 + 1 +           (nia . fmap (cata nia) . outF)       (Fix ZeroF)
+>-- , 1 + 1 +           (nia . fmap (cata nia))                   ZeroF
+>   , 1 + 1 +            nia                                      ZeroF
+>   , 1 + 1 +           0
+>   ]
+>   2
 
 ----
 
@@ -767,8 +656,7 @@ Example: expressions
 >              | Add   r r
 >              | Mul   r r
 >              | IfNeg r r r
->                deriving ( Show, Eq, Ord, Functor
->                         , Foldable, Traversable )
+>                deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 > type Id = String
 
@@ -1585,7 +1473,7 @@ either a term of type `f` or a hole of type `a`.
 
 > -- | A Context is a term (f r) which can contain holes a
 > data CtxF f a r = Term (f r) | Hole a
->                   deriving (Show, Functor)
+>                   deriving (Functor, Show)
 
 > -- | Context fixed-point type. A free monad.
 > type Ctx f a = Fix (CtxF f a)
@@ -1876,7 +1764,7 @@ para        apo
 histo       futu
 zygo
 
-Table: schemes we discussed in this talk
+Table: schemes discussed in this talk
 
 
 References
@@ -1951,7 +1839,7 @@ unfixed JSON data-type
 >     | JSString   String
 >     | JSArray    [r]
 >     | JSObject   [(String, r)]
->     deriving (Show, Eq, Ord, Functor, Foldable)
+>     deriving (Eq, Foldable, Functor, Ord, Show)
 >
 > type JSValue = Fix JSValueF
 
@@ -2072,10 +1960,8 @@ tikz-qtree printer for annotated trees
 
 > main :: IO Counts
 > main =
->     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++ f2concat ++ f1concatMap ++
->                            f1traverse ++ f2sequenceA ++ iosequence ++
->                            f1mapAccumL1 ++ f1mapAccumL2 ++ f1mapAccumR1 ++ f1mapAccumR2 ++
->                            sc ++ ni ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
+>     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++
+>                            sc ++ ni ++ ni2 ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
 >                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ mst ++ fct ++
 >                            np ++ tl ++ sl ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
 >                            exs
