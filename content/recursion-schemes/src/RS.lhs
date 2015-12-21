@@ -308,11 +308,9 @@ data Natural = Zero | Succ Natural
 factor out recursion by defining base structure
 - with parameterized type at recursive points
 
-> -- must be a functor
+> -- "pattern functor" for `Natural` (must be a functor)
 > data NatF r = ZeroF | SuccF r
 >             deriving (Eq, Functor, Show)
-
-this type called a "pattern functor" for the other type
 
 add recursion to pattern functors via recursive `Fix` wrapper
 
@@ -343,27 +341,16 @@ fix           = Fix
 Working with fixed data-types
 =============================
 
-type classes and functional dependencies to (transparently) apply
-isomorphism between (un)fixed representations
+type classes and functional dependencies [FP] to (transparently)
+apply isomorphism between (un)fixed representations
 
 > class Functor f => Fixpoint f t | t -> f where
 >   inF  :: f t -> t
 >   outF :: t -> f t
 
-----
-
-example `Fixpoint` instances
----------------------------------
-
 > instance Functor f => Fixpoint f (Fix f) where
 >   inF  = Fix
 >   outF = unFix
-
-> instance Fixpoint NatF Integer where
->   inF ZeroF          = 0
->   inF (SuccF n)      = n + 1
->   outF n | n > 0     = SuccF (n - 1)
->          | otherwise = ZeroF
 
 ----
 
@@ -623,200 +610,6 @@ foldrX alg = alg . fmap (id *** foldrX alg) . unList
 \end{tikzpicture}
 }}
 
-----
-
-catamorphism-fusion law [3]
-----------------------------
-
-transform composition of a function with a catamorphism into single catamorphism
-
-- eliminates intermediate data structures
-
-$$h \: . \: f = g\: . \: fmap \: h \implies h \: . \: cata \: f = cata \: g$$
-
-where
-
-~~~{.haskell}
-f :: f a -> a
-g :: f b -> b
-h :: a -> b
-~~~
-
-\begin{picture}(0,0)(0,0)
-\put(225,0){\includegraphics[height=1in]{images/fusion.png}}
-\end{picture}
-
-----
-
-Example: expressions
--------------------------------------
-
-> data ExprF r = Const Int
->              | Var   Id
->              | Add   r r
->              | Mul   r r
->              | IfNeg r r r
->                deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-> type Id = String
-
-> type Expr = Fix ExprF
-
-*pattern functor* `ExprF` represents structure of `Expr`
-
-isomorphism between data-type and its pattern functor type handled by `Fix` and `unFix`
-
-Example: evaluator with global environment
-------------------------------------------
-
-> type Env = Map Id Int
-
-> eval :: Env -> Expr -> Maybe Int
-> eval env = cata (evalAlg env)
-
-> evalAlg :: Env -> ExprF (Maybe Int) -> Maybe Int
-> evalAlg env = alg where
->   alg (Const c)     = pure c
->   alg (Var i)       = M.lookup i env
->   alg (Add x y)     = (+) <$> x <*> y
->   alg (Mul x y)     = (*) <$> x <*> y
->   alg (IfNeg t x y) = t >>= bool x y . (<0)
-
-----
-
-> e1 :: Fix ExprF
-> e1 = Fix (Mul
->            (Fix (IfNeg
->                   (Fix (Mul (Fix (Const 1))
->                             (Fix (Var "a"))))
->                   (Fix (Add (Fix (Var "b"))
->                             (Fix (Const 0))))
->                   (Fix (Add (Fix (Var "b"))
->                             (Fix (Const 2))))))
->                 (Fix (Const 3)))
-
-----
-
-An example expression
----------------------
-
-\vspace{0.2in}
-\centerline{\hbox{%
-\begin{tikzpicture}[]
-\Tree [.Mul [.IfNeg [.Mul [.Const 1 ] [.Var a ] ] [.Add [.Var b ] [.Const 0 ] ] [.Add [.Var b ] [.Const 2 ] ] ] [.Const 3 ] ]
-\end{tikzpicture}
-}}
-
-----
-
-> testEnv :: Env
-> testEnv = M.fromList [("a",1),("b",3)]
-
-> ee1 = U.t "ee1"
->       (eval testEnv e1)
->       (Just 9)
-
-----
-
-Example: collecting free variables
-----------------------------------
-
-> freeVars :: Expr -> S.Set Id
-> freeVars = cata alg where
->     alg :: ExprF (S.Set Id) -> S.Set Id
->     alg (Var i) = S.singleton i
->     alg e       = fold e
-
-> fve1 = U.t "fve1"
->        (freeVars e1)
->        (S.fromList ["a","b"])
-
-----
-
-Example: substituting variables
--------------------------------
-
-> substitute :: Map Id Expr -> Expr -> Expr
-> substitute env = cata alg where
->   alg :: ExprF Expr -> Expr
->   alg e@(Var i) = fromMaybe (Fix e) $ M.lookup i env
->   alg e         = Fix e
-
-> sub = M.fromList [("b",Fix $ Var "a")]
-> svfe1 = U.t "svfe1"
->         (freeVars $ substitute sub e1)
->         (S.fromList ["a"])
-
-Composing Algebras
-==================
-
-- in general, catamorphisms do not compose
-- useful special case
-
-Example: an optimisation pipeline
----------------------------------
-
-> optAdd :: ExprF Expr -> Expr
-> optAdd (Add   (Fix (Const 0)) e) = e
-> optAdd (Add e (Fix (Const 0))  ) = e
-> optAdd                        e  = Fix e
->
-> optMul :: ExprF Expr -> Expr
-> optMul (Mul   (Fix (Const 1)) e) = e
-> optMul (Mul e (Fix (Const 1))  ) = e
-> optMul                        e  = Fix e
-
-----
-
-this composition uses two traversals:
-
-> optimizeSlow :: Expr -> Expr
-> optimizeSlow = cata optAdd . cata optMul
-
-> os = U.t "os"
->      (optimizeSlow e1)
->      (Fix (Mul (Fix (IfNeg (Fix (Var "a"))
->                      (Fix (Var "b"))
->                      (Fix (Add (Fix (Var "b"))
->                            (Fix (Const 2))))))
->            (Fix (Const 3))))
-
-An algebra composition operator is needed to enable *short-cut fusion*:
-
-~~~{.haskell}
-cata f . cata g = cata (f `comp` g)
-~~~
-
-For the special case:
-
-~~~{.haskell}
-f :: f a -> a;  g :: g (Fix f) -> Fix f
-~~~~
-
-for arbitrary functors `f` and `g`, this is: \
-`comp x y = x . unFix . y`
-
-----
-
-more efficient optimized pipeline:\footnote{In practice, such a pipeline is likely to be iterated until an equality fixpoint is reached, hence efficiency is important.}
-
-> optimizeFast :: Expr -> Expr
-> optimizeFast = cata (optMul . unFix . optAdd)
-
-> opf = U.t "opf"
->       (optimizeSlow e1)
->       (optimizeFast e1)
-
-above applies *catamorphism compose law* [3]:
-
-~~~{.haskell}
-f :: f a -> a
-h :: g a -> f a
-
-cata f . cata (Fix . h) = cata (f . h)
-~~~
-
-
 Anamorphisms
 ============
 
@@ -856,21 +649,6 @@ examples
 > lb = U.t "lb"
 >      (linesBy (==',') "foo,bar,baz")
 >      ["foo","bar","baz"]
-
-----
-
-> intToNat :: Int -> Nat
-> intToNat = ana coalg where
->     coalg n | n <= 0    = ZeroF
->             | otherwise = SuccF (n - 1)
-
-`coalg` (i.e., "coalgebra")
-
-recursion is not part of the semantics
-
-> itn = U.t "itn"
->       (intToNat 3)
->       (Fix (SuccF (Fix (SuccF (Fix (SuccF (Fix ZeroF)))))))
 
 ----
 
@@ -916,6 +694,22 @@ cata alg = alg . fmap (cata alg) . unFix
 > -- | anamorphism
 > ana :: Functor f => (a -> f a) -> a -> Fix f
 > ana coalg = Fix . fmap (ana coalg) . coalg
+>
+
+----
+
+> intToNat :: Int -> Nat
+> intToNat = ana coalg where
+>     coalg n | n <= 0    = ZeroF
+>             | otherwise = SuccF (n - 1)
+
+`coalg` (i.e., "coalgebra")
+
+recursion is not part of the semantics
+
+> itn = U.t "itn"
+>       (intToNat 3)
+>       (Fix (SuccF (Fix (SuccF (Fix (SuccF (Fix ZeroF)))))))
 
 ----
 
@@ -1108,14 +902,13 @@ Example: factorial
 >   alg ZeroF          = 1
 >   alg (SuccF (f, n)) = f * (n + 1)
 
-$$
-\begin{array}{rcl}
-0!     & = & 1 \\
-(n+1)! & = & n! * (n+1) \\
-\end{array}
-$$
-
 > fct = U.t "fct" (fact 10) 3628800
+
+> instance Fixpoint NatF Integer where
+>   inF ZeroF          = 0
+>   inF (SuccF n)      = n + 1
+>   outF n | n > 0     = SuccF (n - 1)
+>          | otherwise = ZeroF
 
 ----
 
@@ -1370,6 +1163,199 @@ pairwise exchanges elements of stream
 
 ADVANCED TODO
 =============
+
+----
+
+catamorphism-fusion law [3]
+----------------------------
+
+transform composition of a function with a catamorphism into single catamorphism
+
+- eliminates intermediate data structures
+
+$$h \: . \: f = g\: . \: fmap \: h \implies h \: . \: cata \: f = cata \: g$$
+
+where
+
+~~~{.haskell}
+f :: f a -> a
+g :: f b -> b
+h :: a -> b
+~~~
+
+\begin{picture}(0,0)(0,0)
+\put(225,0){\includegraphics[height=1in]{images/fusion.png}}
+\end{picture}
+
+----
+
+Example: expressions
+-------------------------------------
+
+> data ExprF r = Const Int
+>              | Var   Id
+>              | Add   r r
+>              | Mul   r r
+>              | IfNeg r r r
+>                deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+> type Id = String
+
+> type Expr = Fix ExprF
+
+*pattern functor* `ExprF` represents structure of `Expr`
+
+isomorphism between data-type and its pattern functor type handled by `Fix` and `unFix`
+
+Example: evaluator with global environment
+------------------------------------------
+
+> type Env = Map Id Int
+
+> eval :: Env -> Expr -> Maybe Int
+> eval env = cata (evalAlg env)
+
+> evalAlg :: Env -> ExprF (Maybe Int) -> Maybe Int
+> evalAlg env = alg where
+>   alg (Const c)     = pure c
+>   alg (Var i)       = M.lookup i env
+>   alg (Add x y)     = (+) <$> x <*> y
+>   alg (Mul x y)     = (*) <$> x <*> y
+>   alg (IfNeg t x y) = t >>= bool x y . (<0)
+
+----
+
+> e1 :: Fix ExprF
+> e1 = Fix (Mul
+>            (Fix (IfNeg
+>                   (Fix (Mul (Fix (Const 1))
+>                             (Fix (Var "a"))))
+>                   (Fix (Add (Fix (Var "b"))
+>                             (Fix (Const 0))))
+>                   (Fix (Add (Fix (Var "b"))
+>                             (Fix (Const 2))))))
+>                 (Fix (Const 3)))
+
+----
+
+An example expression
+---------------------
+
+\vspace{0.2in}
+\centerline{\hbox{%
+\begin{tikzpicture}[]
+\Tree [.Mul [.IfNeg [.Mul [.Const 1 ] [.Var a ] ] [.Add [.Var b ] [.Const 0 ] ] [.Add [.Var b ] [.Const 2 ] ] ] [.Const 3 ] ]
+\end{tikzpicture}
+}}
+
+----
+
+> testEnv :: Env
+> testEnv = M.fromList [("a",1),("b",3)]
+
+> ee1 = U.t "ee1"
+>       (eval testEnv e1)
+>       (Just 9)
+
+----
+
+Example: collecting free variables
+----------------------------------
+
+> freeVars :: Expr -> S.Set Id
+> freeVars = cata alg where
+>     alg :: ExprF (S.Set Id) -> S.Set Id
+>     alg (Var i) = S.singleton i
+>     alg e       = fold e
+
+> fve1 = U.t "fve1"
+>        (freeVars e1)
+>        (S.fromList ["a","b"])
+
+----
+
+Example: substituting variables
+-------------------------------
+
+> substitute :: Map Id Expr -> Expr -> Expr
+> substitute env = cata alg where
+>   alg :: ExprF Expr -> Expr
+>   alg e@(Var i) = fromMaybe (Fix e) $ M.lookup i env
+>   alg e         = Fix e
+
+> sub = M.fromList [("b",Fix $ Var "a")]
+> svfe1 = U.t "svfe1"
+>         (freeVars $ substitute sub e1)
+>         (S.fromList ["a"])
+
+Composing Algebras
+==================
+
+- in general, catamorphisms do not compose
+- useful special case
+
+Example: an optimisation pipeline
+---------------------------------
+
+> optAdd :: ExprF Expr -> Expr
+> optAdd (Add   (Fix (Const 0)) e) = e
+> optAdd (Add e (Fix (Const 0))  ) = e
+> optAdd                        e  = Fix e
+>
+> optMul :: ExprF Expr -> Expr
+> optMul (Mul   (Fix (Const 1)) e) = e
+> optMul (Mul e (Fix (Const 1))  ) = e
+> optMul                        e  = Fix e
+
+----
+
+this composition uses two traversals:
+
+> optimizeSlow :: Expr -> Expr
+> optimizeSlow = cata optAdd . cata optMul
+
+> os = U.t "os"
+>      (optimizeSlow e1)
+>      (Fix (Mul (Fix (IfNeg (Fix (Var "a"))
+>                      (Fix (Var "b"))
+>                      (Fix (Add (Fix (Var "b"))
+>                            (Fix (Const 2))))))
+>            (Fix (Const 3))))
+
+An algebra composition operator is needed to enable *short-cut fusion*:
+
+~~~{.haskell}
+cata f . cata g = cata (f `comp` g)
+~~~
+
+For the special case:
+
+~~~{.haskell}
+f :: f a -> a;  g :: g (Fix f) -> Fix f
+~~~~
+
+for arbitrary functors `f` and `g`, this is: \
+`comp x y = x . unFix . y`
+
+----
+
+more efficient optimized pipeline:\footnote{In practice, such a pipeline is likely to be iterated until an equality fixpoint is reached, hence efficiency is important.}
+
+> optimizeFast :: Expr -> Expr
+> optimizeFast = cata (optMul . unFix . optAdd)
+
+> opf = U.t "opf"
+>       (optimizeSlow e1)
+>       (optimizeFast e1)
+
+above applies *catamorphism compose law* [3]:
+
+~~~{.haskell}
+f :: f a -> a
+h :: g a -> f a
+
+cata f . cata (Fix . h) = cata (f . h)
+~~~
 
 
 Combining Algebras
@@ -1767,30 +1753,6 @@ zygo
 Table: schemes discussed in this talk
 
 
-References
-==========
-
-[1] J. Gibbons, "Origami programming.", The Fun of Programming, Palgrave, 2003.
-
-[2] C. McBride & R. Paterson, "Applicative programming with effects", Journal of Functional Programming, vol. 18, no. 01, pp. 1-13, 2008.
-
-[3] E. Meijer, "Functional Programming with Bananas , Lenses , Envelopes and Barbed Wire", 1991.
-
-[4] W. Swierstra, "Data types a la carte", Journal of Functional Programming, vol 18, no. 04, pp. 423-435, Mar. 2008.
-
-----
-
-[5] L. Augusteijn, "Sorting morphisms" pp. 1-23, 3rd International Summer School on Advanced Functional Programming, volume 1608 of LNCS, 1998.
-
-[6] V. Vene, "Functional Programming with Apomorphisms (Corecursion)" pp. 147-161, 1988.
-
-[7] T. Uustalu & V. Venu, "Primitive (Co)Recursion and Course-of-Value (Co)Iteration, Categorically" Informatica, Vol. 10, No. 1, 5-26, 1999.
-
-Tim Williams's recursion schemes presentation
-
-- http://www.timphilipwilliams.com/slides.html
-- https://www.youtube.com/watch?v=Zw9KeP3OzpU
-
 Appendix
 ========
 
@@ -1965,3 +1927,32 @@ tikz-qtree printer for annotated trees
 >                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ mst ++ fct ++
 >                            np ++ tl ++ sl ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
 >                            exs
+
+
+
+References
+==========
+
+[1] J. Gibbons, "Origami programming.", The Fun of Programming, Palgrave, 2003.
+
+[2] C. McBride & R. Paterson, "Applicative programming with effects", Journal of Functional Programming, vol. 18, no. 01, pp. 1-13, 2008.
+
+[3] E. Meijer, "Functional Programming with Bananas , Lenses , Envelopes and Barbed Wire", 1991.
+
+[4] W. Swierstra, "Data types a la carte", Journal of Functional Programming, vol 18, no. 04, pp. 423-435, Mar. 2008.
+
+----
+
+[5] L. Augusteijn, "Sorting morphisms" pp. 1-23, 3rd International Summer School on Advanced Functional Programming, volume 1608 of LNCS, 1998.
+
+[6] V. Vene, "Functional Programming with Apomorphisms (Corecursion)" pp. 147-161, 1988.
+
+[7] T. Uustalu & V. Venu, "Primitive (Co)Recursion and Course-of-Value (Co)Iteration, Categorically" Informatica, Vol. 10, No. 1, 5-26, 1999.
+
+Tim Williams's recursion schemes presentation
+
+- http://www.timphilipwilliams.com/slides.html
+- https://www.youtube.com/watch?v=Zw9KeP3OzpU
+
+
+[FP] https://wiki.haskell.org/Functional_dependencies
