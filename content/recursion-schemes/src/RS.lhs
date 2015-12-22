@@ -12,12 +12,17 @@ Introduction
 Overview
 ========
 
-\begin{itemize}
-\item Explicit Recursion
-\item Factor recursion out of functions with `fold`
-\item Factor recursion out of data with `Fix`
-\item TODO: Tour of types of recursion
-\end{itemize}
+- explicit recursive functions
+- factor recursion out of functions with `fold`
+- explicit recursive data
+- factor recursion out of data with `Fix`
+- use "library" functions to recursivly operate on "fixed" data
+    - generic "folds" (aka "catamorphism")
+    - generic "unfolds" (aka "anamorphism")
+    - generic unfolds followed by folds (aka "hylomorphism")
+- conclusion
+- other recursion schemes (time permitting)
+- foundations and advanced usage (in the hall)
 
 ----
 
@@ -770,7 +775,10 @@ OTHER RECURSION SCHEMES
 
 \begin{tabular}{ l l p{6cm} }
 `para`  &    paramorphism  & folds with access to input arg corresponding to most recent state of computation \\
-...     &    ...           & ... \\
+`apo`   &    apomorphism   & TODO unfold that can exit early \\
+`zygo`  &    zygomorphism  & TODO generalized paramorphism : asymmetric mutual recursion \\
+`histo` &    histomorphism & TODO course-of-value recursion : can use previously computed values \\
+`futu`  &    futumorphism  & TODO course-of-value coiteration : produce one or more levels \\
 \end{tabular}
 
 Paramorphisms
