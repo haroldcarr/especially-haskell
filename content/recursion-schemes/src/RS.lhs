@@ -249,6 +249,8 @@ class Monoid a where
 
 ----
 
+other `Foldable` operations
+
 ~~~{.haskell}
 -- | foldr with no base case. For non-empty structures.
 foldr1 :: (a -> a -> a) -> t a -> a
@@ -306,6 +308,7 @@ data Natural = Zero | Succ Natural
 ~~~
 
 factor out recursion by defining base structure
+
 - with parameterized type at recursive points
 
 > -- "pattern functor" for `Natural` (must be a functor)
@@ -334,15 +337,16 @@ fix           = Fix
 - `fix` adds one level of recursion
 - `unfix` removes one level of recursion
 
-`Fix` is "generic" recursive structure
+`Fix` *is "generic" recursive structure*
+
 - write recursive type without using recursion
 - use `Fix` to add recursion
 
 Working with fixed data-types
 =============================
 
-type classes and functional dependencies [FP] to (transparently)
-apply isomorphism between (un)fixed representations
+a type class (using functional dependencies [FD]) to
+(transparently) apply isomorphism between (un)fixed representations
 
 > class Functor f => Fixpoint f t | t -> f where
 >   inF  :: f t -> t
@@ -352,15 +356,23 @@ apply isomorphism between (un)fixed representations
 >   inF  = Fix
 >   outF = unFix
 
+> ifi = U.t "ifi"
+>     (inF       (SuccF (Fix ZeroF)))
+>           (Fix (SuccF (Fix ZeroF)))
+
+> ofi = U.t "ofi"
+>     (outF (Fix (SuccF (Fix ZeroF))))
+>                (SuccF (Fix ZeroF))
+
 ----
 
 smart constructors
 
-> zero     :: Nat
-> zero      = Fix ZeroF
+> zero  :: Nat
+> zero  = Fix ZeroF
 
-> succ     :: Nat -> Nat
-> succ      = Fix . SuccF
+> succ  :: Nat -> Nat
+> succ  = Fix . SuccF
 
 > sc = U.t "sc"
 >           (succ       (succ       (succ       zero)))
@@ -368,23 +380,26 @@ smart constructors
 
 ----
 
-example lists and trees
+example : lists
 
 > data ListF a r = C a r | N deriving (Eq, Functor, Show)
+
 > type List a    = Fix (ListF a)
+
 > nil           :: List a
 > nil            = Fix N
 > cons          :: a -> List a -> List a
 > cons x xs      = Fix (C x xs)
 
-~~~{.haskell}
--- derivation
-instance Functor (ListF a) where
-  fmap _ N        = N
-  fmap f (C x xs) = C x (f xs)
-~~~
+> instance Fixpoint (ListF a) [a] where
+>   inF N        = []
+>   inF (C x xs) = x : xs
+>   outF []      = N
+>   outF (x:xs)  = C x xs
 
 ----
+
+example : trees
 
 ~~~{.haskell}
 data TreeF a r = EmptyF
@@ -395,23 +410,18 @@ data TreeF a r = EmptyF
 type Tree a    = Fix (TreeF a)
 ~~~
 
-> instance Fixpoint (ListF a) [a] where
->   inF N        = []
->   inF (C x xs) = x : xs
->   outF []      = N
->   outF (x:xs)  = C x xs
+recusion as library functions
+=============================
 
-----
+\begin{tabular}{ l l p{6cm} }
+`cata`  &    catamorphism  & folds \\
+`ana`   &    anamorphisms  & unfolds \\
+`hylo`  &    hylomorphism  & anamorphisms followed by catamorphisms (corecursive production followed by recursive consumption) \\
+`para`  &    paramorphism  & folds with access to input arg corresponding to most recent state of computation \\
+...     &    ...           & ... \\
+\end{tabular}
 
-now can use library functions for
 
-- catamorphisms : `cata` : folds
-- anamorphisms  : `ana`  : unfolds
-- hylomorphisms : `hylo` : anamorphisms followed by catamorphisms
-                           (corecursive production followed by recursive consumption)
-- paramorphisms : `para` : folds with access to input arg
-                           corresponding to most recent state of computation
-- ...
 
 Catamorphisms
 =============
@@ -438,6 +448,7 @@ cata alg = alg . fmap (cata alg) . unFix
 >     alg (SuccF n) = n + 1
 
 `alg` (i.e., "algebra") defines reduction semantics
+
 - _semantics are not defined recursively_
 - recursion has been decoupled: handled by `cata`
 
@@ -482,9 +493,18 @@ instance Functor NatF where
 >     alg (C x xs) | p x       = cons x xs
 >                  | otherwise = xs
 
+~~~{.haskell}
+-- derivation
+instance Functor (ListF a) where
+  fmap _ N        = N
+  fmap f (C x xs) = C x (f xs)
+~~~
+
 > fi = U.t "fi"
 >      (filterL even (cons 1 (cons 2 nil)))
 >      (cons 2 nil)
+
+----
 
 Catamorphism
 ------------
@@ -675,7 +695,9 @@ Given two sorted lists, `mergeLists` merges them into one sorted list.
 Corecursion
 -----------
 
-anamorphism is *corecursive*, the dual of catamorphisms/recursion
+anamorphism is *corecursive*
+
+- the dual of catamorphisms/recursion
 
 corecursion produces (potentially infinite) *codata*
 
@@ -760,16 +782,14 @@ instance Functor (StreamF a) where
   fmap f (S x xs) = S x (f xs)
 ~~~
 
-constructor
+constructor/deconstructors:
 
 > consS :: a -> Cofix (StreamF a) -> Cofix (StreamF a)
 > consS x xs = Cofix (S x xs)
 
-deconstructors:
-
 > headS :: Cofix (StreamF a) -> a
 > headS (unCofix -> (S x _ )) = x
->
+
 > tailS :: Cofix (StreamF a) -> Cofix (StreamF a)
 > tailS (unCofix -> (S _ xs)) = xs
 
@@ -822,7 +842,7 @@ Giving:
 hylo f g = f . fmap (hylo f g) . g
 ~~~
 
-does not require the full structure built up for i.e. `cata`` and `ana`
+does not require the full structure built up for `cata` and `ana`
 
 NB. this transformation is the basis for *deforestation*, eliminating intermediate data structures.
 
@@ -854,9 +874,11 @@ use tree data-type to capture divide-and-conquer pattern of recursion.
 
 note the fusion
 
+----
+
 > mst = U.t "mst"
->        (mergeSort [7,6,3,1,5,4,2::Int])
->        [1,2,3,4,5,6,7]
+>       (mergeSort [7,6,3,1,5,4,2::Int])
+>       [1,2,3,4,5,6,7]
 
 \begin{picture}(0,0)(0,0)
 \put(165,-50){\resizebox{2in}{!}{%
@@ -875,26 +897,18 @@ Paramorphisms
 - enables access to the original input structures
 - operates on algebra that provides access to input arg corresponding to running state of the recursion
 
-For a pattern functor, a paramorphism is:
-
 ~~~{.haskell}
 para :: Fixpoint f t => (f (a, t) -> a ) -> t -> a
 para alg = fst . cata (alg &&& Fix . fmap snd)
 ~~~~
 
-----
-
-For better efficiency, modify the original cata definition:
-
+> -- more efficient
 > para :: Fixpoint f t => (f (a, t) -> a) -> t -> a
 > para alg = alg . fmap (para alg &&& id) . outF
 
 ----
 
-Example: factorial
---------------------------------
-
-- classic example of primitive recursion
+- factorial : classic example of primitive recursion
 - usual `fact n = foldr (*) [1..n]` is unfold followed by fold
 
 > fact :: Integer -> Integer
@@ -910,6 +924,11 @@ Example: factorial
 >   outF n | n > 0     = SuccF (n - 1)
 >          | otherwise = ZeroF
 
+> infz = U.t "infz" (inF ZeroF     :: Integer) 0
+> infs = U.t "infs" (inF (SuccF 0) :: Integer) 1
+> otfz = U.t "otfz" (outF 0 :: NatF Integer) ZeroF
+> otfs = U.t "otfs" (outF 1 :: NatF Integer) (SuccF 0)
+
 ----
 
 > natpred :: Nat -> Nat
@@ -919,7 +938,7 @@ Example: factorial
 
 > np = U.t "np"
 >      (natpred (succ (succ (succ zero))))
->      (succ (succ zero))
+>                     (succ (succ zero))
 
 > tailL :: List a -> List a
 > tailL = para alg where
@@ -968,6 +987,7 @@ apo coa = ana (coa ||| fmap Right . outF) . Left
 ----
 
 uses apomorphism to generate
+
 - new insertion step when `x>y`
 - short-circuits to final result when `x<=y`
 
@@ -1127,7 +1147,7 @@ Futumorphism
 - REF: introduced by Uustalu & Venu in 1999 [7]
 - the corecursive dual of the histomorphism
 - models *course-of-value* coiteration
-- allows us to produce one or more levels
+- enables producing one or more levels
 
 > futu :: Functor f => (a -> f (Ctx f a)) -> a -> Cofix f
 > futu coa = ana' ((coa ||| id) . unCtx) . hole
@@ -1160,6 +1180,25 @@ pairwise exchanges elements of stream
 > exs = U.t "exs"
 >       (takeS 10 $ exch s1)
 >       [2,1,4,3,6,5,8,7,10,9]
+
+Conclusion
+==========
+
+- catamorphisms, anamorphisms hylomorphisms
+    - (folds, unfolds, and refolds)
+    - fundamental
+    - they can express all recursive computation
+- other recursion schemes are based on the above
+    - offer more structure
+- these patterns enable reliable, efficient, parallel programs
+
+Recursion   Corecursion   General
+----------  ------------  ---------
+cata        ana           hylo
+para        apo
+histo       futu
+zygo
+
 
 ADVANCED TODO
 =============
@@ -1362,6 +1401,7 @@ Combining Algebras
 ==================
 
 Algebras over same functor but different carrier types combined as products
+
 - now two or more catamorphisms performed as one
 
 Given two algebras,
@@ -1696,7 +1736,6 @@ Memoization
 - memoization, or caching: trade space for time
 - since recursion restricted to a library of standard combinators, can define memoizing variants that can easily be swapped in
 
-
 - the simplest (pure) memoize function requires some kind of `Enumerable` context
 
 ~~~{.haskell}
@@ -1732,25 +1771,6 @@ memoize :: Enumerable k => (k -> v) -> k -> v
 >   memoFix (\rec -> fmap f . mapM rec . unFix) x
 
 **WARNING** this could result in a slowdown unless your algebra is significantly more expensive than a hash computation!
-
-Conclusion
-==========
-
-- catamorphisms, anamorphisms and hylomorphisms (folds, unfolds, and refolds) are fundamental and together capture all recursive computation
-- other more exotic recursion schemes are based on the above and just offer more structure
-- applying these patterns enables building more reliable, efficient and parallel programs
-- seek to avoid direct explicit recursion wherever possible
-
-----
-
-Recursion   Corecursion   General
-----------  ------------  ---------
-cata        ana           hylo
-para        apo
-histo       futu
-zygo
-
-Table: schemes discussed in this talk
 
 
 Appendix
@@ -1922,9 +1942,10 @@ tikz-qtree printer for annotated trees
 
 > main :: IO Counts
 > main =
->     runTestTT $ TestList $ f2fold ++ f1foldMap ++ f1foldr ++ f1foldr2 ++
+>     runTestTT $ TestList $ f2fold ++ f1foldMap ++ ifi ++ ofi ++ f1foldr ++ f1foldr2 ++
 >                            sc ++ ni ++ ni2 ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
 >                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ mst ++ fct ++
+>                            infz ++ infs ++ otfz ++ otfs ++
 >                            np ++ tl ++ sl ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
 >                            exs
 
@@ -1955,4 +1976,4 @@ Tim Williams's recursion schemes presentation
 - https://www.youtube.com/watch?v=Zw9KeP3OzpU
 
 
-[FP] https://wiki.haskell.org/Functional_dependencies
+[FD] https://wiki.haskell.org/Functional_dependencies
