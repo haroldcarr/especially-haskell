@@ -207,7 +207,7 @@ foldr :: (a -> b -> b) -> b -> t a -> b
 >            15
 
 > f1foldr2 = U.t "f1foldr2"
->            (foldr ((++) . show) "" f1)
+>            (foldr ((++) . show . head) "" f2)
 >            "12345"
 
 ----
@@ -729,7 +729,7 @@ use tree data-type to capture divide-and-conquer pattern of recursion.
 
 > mergeSort :: Ord a => [a] -> [a]
 > mergeSort = hylo alg coalg where
->     alg (Leaf c)   = [c]
+>     alg (Leaf c)    = [c]
 >     alg (Bin xs ys) = O.merge xs ys
 >     coalg [x]       = Leaf x
 >     coalg xs        = Bin l r where
