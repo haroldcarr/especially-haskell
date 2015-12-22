@@ -16,7 +16,7 @@ Overview
 \item Explicit Recursion
 \item Factor recursion out of functions with `fold`
 \item Factor recursion out of data with `Fix`
-\item Tour of types of recursion
+\item TODO: Tour of types of recursion
 \end{itemize}
 
 ----
@@ -200,6 +200,7 @@ foldr :: (a -> b -> b) -> b -> t a -> b
 > f1foldr  = U.t "f1foldr"
 >            (foldr (+) 0 f1)
 >            15
+
 > f1foldr2 = U.t "f1foldr2"
 >            (foldr ((++) . show) "" f1)
 >            "12345"
@@ -213,8 +214,9 @@ Other `Foldable` operations
 fold :: Monoid m => t m -> m
 ~~~
 
-> f2fold      = U.t "f2fold"
->               (fold f2)                   [1,2,3,4,5]
+> f2fold    = U.t "f2fold"
+>             (fold f2)
+>             [1,2,3,4,5]
 
 ~~~{.haskell}
 -- | Map each element of structure to a monoid
@@ -222,8 +224,9 @@ fold :: Monoid m => t m -> m
 foldMap :: Monoid m => (a -> m) -> t a -> m
 ~~~
 
-> f1foldMap   = U.t "f1foldMap"
->               (foldMap show f1)           "12345"
+> f1foldMap = U.t "f1foldMap"
+>             (foldMap show f1)
+>             "12345"
 
 ----
 
@@ -417,7 +420,6 @@ recusion as library functions
 `cata`  &    catamorphism  & folds \\
 `ana`   &    anamorphisms  & unfolds \\
 `hylo`  &    hylomorphism  & anamorphisms followed by catamorphisms (corecursive production followed by recursive consumption) \\
-`para`  &    paramorphism  & folds with access to input arg corresponding to most recent state of computation \\
 ...     &    ...           & ... \\
 \end{tabular}
 
@@ -504,131 +506,6 @@ instance Functor (ListF a) where
 >      (filterL even (cons 1 (cons 2 nil)))
 >      (cons 2 nil)
 
-----
-
-Catamorphism
-------------
-
-\vspace{0.2in}
-\centerline{\resizebox{3in}{!}{%
-\begin{tikzpicture}[node distance=2.75cm, auto, font=\small\sffamily]
-  \node (ffixf) {\bf\it f (Fix f)};
-  \node (fixf) [below of=ffixf] {\bf\it Fix f};
-  \node (fa) [right of=ffixf] {\bf\it f a};
-  \node (a) [right of=fixf] {\bf\it a};
-  \draw[->] (ffixf) to node {\tiny fmap (cata alg)} (fa);
-  \draw[->] (ffixf) to node [swap] {\tiny Fix} (fixf);
-  \draw[->] (fixf) to node [swap] {\tiny cata alg} (a);
-  \draw[->] (fa) to node {\tiny alg} (a);
-\end{tikzpicture}
-}}
-
-----
-
-concrete example
-
-~~~{.haskell}
-foldr :: (a -> b -> b) -> z -> [a] -> b
-foldr f z    []     = z
-foldr f z    (x:xs) = f          x (foldr f z  xs)
-~~~
-
-written in form closer to theory
-
-> foldrP :: (Maybe (a, b) -> b) -> [a] -> b
-> foldrP alg []     = alg Nothing
-> foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
-
-----
-
-~~~{.haskell}
-foldrP :: (Maybe (a, b) -> b) -> [a] -> b
-foldrP alg []     = alg Nothing
-foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
-~~~
-
-> mp Nothing        = 0
-> mp (Just (a, bs)) = a + bs
-
-> fpl = U.tt "fpl"
->       [                      foldrP mp [1,2]
->       ,         mp (Just (1, foldrP mp   [2]))
->       , 1 +                  foldrP mp   [2]
->       , 1 +     mp (Just (2, foldrP mp   []))
->       , 1 + 2 +              foldrP mp   []
->       , 1 + 2 + mp           Nothing
->       , 1 + 2 + 0
->       ]
->       3
-
-----
-
-> lengthX :: [a] -> Int
-> lengthX = foldrP alg where
->   alg :: Maybe (a, Int) -> Int
->   alg Nothing        = 0
->   alg (Just (_, xs)) = xs + 1
-
-> lx = U.t "lx" (lengthX "foobar") 6
-
-----
-
-written in form even closer to theory
-
-> foldrX :: (Maybe (a, b) -> b) -> [a] -> b
-> foldrX alg = alg . fmap (id *** foldrX alg) . unList
->   where
->     unList []     = Nothing
->     unList (x:xs) = Just (x, xs)
-
-- Uses function product \footnote{defined more generally in Control.Arrow}
-
-~~~{.haskell}
-(***) :: (b -> c) -> (d -> e) -> (b, d) -> (c, e)
-(f *** g) (x, y) = (f x, g y)
-~~~
-
-----
-
-~~~{.haskell}
-foldrX :: (Maybe (a, b) -> b) -> [a] -> b
-foldrX alg = alg . fmap (id *** foldrX alg) . unList
-  where
-    unList []     = Nothing
-    unList (x:xs) = Just (x, xs)
-~~~
-
-> fxl = U.tt "fxl"
->       [                            foldrX mp         [1, 2]
->       ,         (mp . fmap (id *** foldrX mp)) (Just (1,[2]))
->       ,          mp   (Just (1,    foldrX mp            [2]))
->       , 1 +                        foldrX mp            [2]
->       , 1 +     (mp . fmap (id *** foldrX mp)) (Just (2,[]))
->       , 1 +      mp   (Just (2,    foldrX mp            []))
->       , 1 + 2 +                    foldrX mp            []
->       , 1 + 2 + (mp . fmap (id *** foldrX mp)) Nothing
->       , 1 + 2 +  mp   Nothing
->       , 1 + 2 + 0
->       ]
->       3
-
-----
-
-`foldrX` can be visualized:\footnote{The nodes represent types (objects) and the edges functions (morphisms).}
-
-\vspace{0.2in}
-\centerline{\resizebox{4in}{!}{%
-\begin{tikzpicture}[auto, font=\small\sffamily]
-  \node (ffixf) at (0,2.75) {\bf\it Maybe (a, [a])};
-  \node (fixf) at (0,0) {\bf\it [a]};
-  \node (fa) at (4.5,2.75) {\bf\it Maybe (a, b)};
-  \node (a) at (4.5,0) {\bf\it b};
-  \draw[->] (ffixf) to node {\tiny fmap (id *** foldrX alg)} (fa);
-  \draw[->] (fixf) to node {\tiny unList} (ffixf);
-  \draw[->] (fixf) to node [swap] {\tiny foldrX alg} (a);
-  \draw[->] (fa) to node {\tiny alg} (a);
-\end{tikzpicture}
-}}
 
 Anamorphisms
 ============
@@ -750,25 +627,6 @@ newtype Fix f = Fix { unFix :: f (Fix f) }
 
 ----
 
-Anamorphism
------------
-
-\vspace{0.2in}
-\centerline{\resizebox{3in}{!}{%
-\begin{tikzpicture}[node distance=2.75cm, auto, font=\small\sffamily]
-  \node (ffixf) {\bf\it f (Cofix f)};
-  \node (fixf) [below of=ffixf] {\bf\it Cofix f};
-  \node (fa) [right of=ffixf] {\bf\it f a};
-  \node (a) [right of=fixf] {\bf\it a};
-  \draw[->] (fa) to node [swap] {\tiny fmap (ana coalg)} (ffixf);
-  \draw[->] (fixf) to node {\tiny unFix} (ffixf);
-  \draw[->] (a) to node [swap] {\tiny ana coalg} (fixf);
-  \draw[->] (a) to node [swap] {\tiny coalg} (fa);
-\end{tikzpicture}
-}}
-
-----
-
 Example: coinductive streams
 ----------------------------
 
@@ -887,6 +745,33 @@ note the fusion
 \end{tikzpicture}}}
 \end{picture}
 
+
+Conclusion
+==========
+
+- catamorphisms, anamorphisms hylomorphisms
+    - (folds, unfolds, and refolds)
+    - fundamental
+    - they can express all recursive computation
+- other recursion schemes : based on the above
+    - offer more structure
+- recursion patterns enable reliable, efficient, parallel programs
+
+Recursion   Corecursion   General
+----------  ------------  ---------
+cata        ana           hylo
+para        apo
+histo       futu
+zygo
+
+
+OTHER RECURSION SCHEMES
+=======================
+
+\begin{tabular}{ l l p{6cm} }
+`para`  &    paramorphism  & folds with access to input arg corresponding to most recent state of computation \\
+...     &    ...           & ... \\
+\end{tabular}
 
 Paramorphisms
 =============
@@ -1181,27 +1066,154 @@ pairwise exchanges elements of stream
 >       (takeS 10 $ exch s1)
 >       [2,1,4,3,6,5,8,7,10,9]
 
-Conclusion
-==========
 
-- catamorphisms, anamorphisms hylomorphisms
-    - (folds, unfolds, and refolds)
-    - fundamental
-    - they can express all recursive computation
-- other recursion schemes are based on the above
-    - offer more structure
-- these patterns enable reliable, efficient, parallel programs
+ADVANCED
+========
 
-Recursion   Corecursion   General
-----------  ------------  ---------
-cata        ana           hylo
-para        apo
-histo       futu
-zygo
+----
 
+Catamorphism
+------------
 
-ADVANCED TODO
-=============
+\vspace{0.2in}
+\centerline{\resizebox{3in}{!}{%
+\begin{tikzpicture}[node distance=2.75cm, auto, font=\small\sffamily]
+  \node (ffixf) {\bf\it f (Fix f)};
+  \node (fixf) [below of=ffixf] {\bf\it Fix f};
+  \node (fa) [right of=ffixf] {\bf\it f a};
+  \node (a) [right of=fixf] {\bf\it a};
+  \draw[->] (ffixf) to node {\tiny fmap (cata alg)} (fa);
+  \draw[->] (ffixf) to node [swap] {\tiny Fix} (fixf);
+  \draw[->] (fixf) to node [swap] {\tiny cata alg} (a);
+  \draw[->] (fa) to node {\tiny alg} (a);
+\end{tikzpicture}
+}}
+
+----
+
+concrete example
+
+~~~{.haskell}
+foldr :: (a -> b -> b) -> z -> [a] -> b
+foldr f z    []     = z
+foldr f z    (x:xs) = f          x (foldr f z  xs)
+~~~
+
+written in form closer to theory
+
+> foldrP :: (Maybe (a, b) -> b) -> [a] -> b
+> foldrP alg []     = alg Nothing
+> foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
+
+----
+
+~~~{.haskell}
+foldrP :: (Maybe (a, b) -> b) -> [a] -> b
+foldrP alg []     = alg Nothing
+foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
+~~~
+
+> mp Nothing        = 0
+> mp (Just (a, bs)) = a + bs
+
+> fpl = U.tt "fpl"
+>       [                      foldrP mp [1,2]
+>       ,         mp (Just (1, foldrP mp   [2]))
+>       , 1 +                  foldrP mp   [2]
+>       , 1 +     mp (Just (2, foldrP mp   []))
+>       , 1 + 2 +              foldrP mp   []
+>       , 1 + 2 + mp           Nothing
+>       , 1 + 2 + 0
+>       ]
+>       3
+
+----
+
+> lengthX :: [a] -> Int
+> lengthX = foldrP alg where
+>   alg :: Maybe (a, Int) -> Int
+>   alg Nothing        = 0
+>   alg (Just (_, xs)) = xs + 1
+
+> lx = U.t "lx" (lengthX "foobar") 6
+
+----
+
+written in form even closer to theory
+
+> foldrX :: (Maybe (a, b) -> b) -> [a] -> b
+> foldrX alg = alg . fmap (id *** foldrX alg) . unList
+>   where
+>     unList []     = Nothing
+>     unList (x:xs) = Just (x, xs)
+
+- Uses function product \footnote{defined more generally in Control.Arrow}
+
+~~~{.haskell}
+(***) :: (b -> c) -> (d -> e) -> (b, d) -> (c, e)
+(f *** g) (x, y) = (f x, g y)
+~~~
+
+----
+
+~~~{.haskell}
+foldrX :: (Maybe (a, b) -> b) -> [a] -> b
+foldrX alg = alg . fmap (id *** foldrX alg) . unList
+  where
+    unList []     = Nothing
+    unList (x:xs) = Just (x, xs)
+~~~
+
+> fxl = U.tt "fxl"
+>       [                            foldrX mp         [1, 2]
+>       ,         (mp . fmap (id *** foldrX mp)) (Just (1,[2]))
+>       ,          mp   (Just (1,    foldrX mp            [2]))
+>       , 1 +                        foldrX mp            [2]
+>       , 1 +     (mp . fmap (id *** foldrX mp)) (Just (2,[]))
+>       , 1 +      mp   (Just (2,    foldrX mp            []))
+>       , 1 + 2 +                    foldrX mp            []
+>       , 1 + 2 + (mp . fmap (id *** foldrX mp)) Nothing
+>       , 1 + 2 +  mp   Nothing
+>       , 1 + 2 + 0
+>       ]
+>       3
+
+----
+
+`foldrX` can be visualized:\footnote{The nodes represent types (objects) and the edges functions (morphisms).}
+
+\vspace{0.2in}
+\centerline{\resizebox{4in}{!}{%
+\begin{tikzpicture}[auto, font=\small\sffamily]
+  \node (ffixf) at (0,2.75) {\bf\it Maybe (a, [a])};
+  \node (fixf) at (0,0) {\bf\it [a]};
+  \node (fa) at (4.5,2.75) {\bf\it Maybe (a, b)};
+  \node (a) at (4.5,0) {\bf\it b};
+  \draw[->] (ffixf) to node {\tiny fmap (id *** foldrX alg)} (fa);
+  \draw[->] (fixf) to node {\tiny unList} (ffixf);
+  \draw[->] (fixf) to node [swap] {\tiny foldrX alg} (a);
+  \draw[->] (fa) to node {\tiny alg} (a);
+\end{tikzpicture}
+}}
+
+----
+
+Anamorphism
+-----------
+
+\vspace{0.2in}
+\centerline{\resizebox{3in}{!}{%
+\begin{tikzpicture}[node distance=2.75cm, auto, font=\small\sffamily]
+  \node (ffixf) {\bf\it f (Cofix f)};
+  \node (fixf) [below of=ffixf] {\bf\it Cofix f};
+  \node (fa) [right of=ffixf] {\bf\it f a};
+  \node (a) [right of=fixf] {\bf\it a};
+  \draw[->] (fa) to node [swap] {\tiny fmap (ana coalg)} (ffixf);
+  \draw[->] (fixf) to node {\tiny unFix} (ffixf);
+  \draw[->] (a) to node [swap] {\tiny ana coalg} (fixf);
+  \draw[->] (a) to node [swap] {\tiny coalg} (fa);
+\end{tikzpicture}
+}}
 
 ----
 
