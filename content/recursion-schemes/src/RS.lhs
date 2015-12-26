@@ -26,8 +26,12 @@ Overview
 
 ----
 
-> {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+\newcommand{\ignore}[1]{}
 
+\ignore{
+
+> {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+>
 > {-# LANGUAGE DeriveFoldable         #-}
 > {-# LANGUAGE DeriveFunctor          #-}
 > {-# LANGUAGE DeriveTraversable      #-}
@@ -41,9 +45,7 @@ Overview
 > {-# LANGUAGE TypeOperators          #-}
 > {-# LANGUAGE UndecidableInstances   #-}
 > {-# LANGUAGE ViewPatterns           #-}
-
-----
-
+>
 > module RS where
 >
 > import           Control.Applicative   (empty, many, (<|>))
@@ -60,12 +62,9 @@ Overview
 > import           Data.Set              as S (Set, fromList, singleton)
 > import           Numeric               (readFloat, readSigned)
 > import           Prelude               as P hiding (replicate, succ)
-
-----
-
-Third-party Hackage packages
-----------------------------
-
+>
+> -- Third-party Hackage packages
+>
 > import           Data.Bool.Extras              (bool)
 > import           Data.Hashable                 (Hashable, hashWithSalt)
 > import           Data.HashTable.Class          (HashTable)
@@ -77,6 +76,10 @@ Third-party Hackage packages
 > import           Text.ParserCombinators.Parsec hiding (many, space, (<|>))
 > import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
 > import qualified Text.PrettyPrint.Leijen       as PP (brackets, (<>))
+
+}
+
+> -- TODO : without this, pandoc/pdf conversion complains
 
 Explicit Recursion
 ==================
@@ -97,10 +100,22 @@ same recursive structure, except
 factor recursion out of functions with `fold`
 ============================================
 
+\newcommand{\ignore}[1]{}
+
+\ignore{
+
 > sumF :: (Foldable t, Num b) => t b    -> b
+
+}
+
 > sumF  = foldr (+)  0
 
+\ignore{
+
 > andF :: Foldable t          => t Bool -> Bool
+
+}
+
 > andF  = foldr (&&) True
 
 ~~~{.haskell}
@@ -123,7 +138,14 @@ another example: `length`
 
 as a fold
 
+\newcommand{\ignore}[1]{}
+
+\ignore{
+
 > lengthF :: (Foldable t, Num b) => t a -> b
+
+}
+
 > lengthF        = foldr (\_ n -> 1 + n) 0
 
 ~~~{.haskell}
