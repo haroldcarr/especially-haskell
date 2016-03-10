@@ -1,0 +1,46 @@
+Refactoring Recursion
+
+Recursion is the fundamental looping mechanism in functional programming. This talk will show several patterns of recursion using Haskell. In the first part of the talk Harold covers the case of factoring explicit recursion out of functions. He will start where beginners start: writing explicit recursive versions of `sum`, `product` and `length` of lists. The common recursive pattern found in those versions is then factored out into `fold` functions. Then `sum`, etc., are rewritten to use folds. Harold will then show how folds are generalized to work with other recursive types via the `Foldable` typeclass. This requires a `Foldable` instance to be written for new recursive types.
+
+The next part of the talk shows how to factor explicit recursion out of recursive data types like trees. This is done by putting the recursion in a `Fix` datatype and rewriting types like trees in terms of `Fix`. Harold will show that the goal of such "Fixed" types is to write different types of recursion ONCE for all data types (instead of requiring a `Foldable` instance to be written). He shows how to USE (not the underlying theory) generic folds (aka "catamorphism"), generic unfolds (aka "anamorphism") and generic unfolds followed by folds (aka "hylomorphism"). Harold will conclude by mentioning other types of generic recursion that enable access to the internal state of the recursion (e.g., unfold that can exit early).
+
+This talk is in Haskell.  It is aimed at beginning and intermediate functional programmers. Beginners will find the first half of the talk immediately useful.  Beginners will also find knowledge of the existence of the techniques in the second half as something to shoot for in the future.
+
+==============================================================================
+
+This talk starts with beginner level material but ends with intermediate material.  I have structured it such that the intermediate material is still useful and accessible to beginners.  I marked the talk as "Beginning" level, but it might could also be marked "Intermediate".
+
+The raw material (still in progress) for this talk can be viewed at:
+
+    https://github.com/haroldcarr/especially-haskell/blob/master/content/recursion-schemes/src/RS.lhs
+
+Note 1: I can supply a PDF of slides if you would like.
+
+Note 2: Only the first half of this file will be used : up to "Conclusion"
+
+This material is based on:
+
+- https://www.youtube.com/watch?v=Zw9KeP3OzpU
+  Tim Williams's recursion schemes presentation
+
+- http://eprints.eemcs.utwente.nl/7281/01/db-utwente-40501F46.pdf
+  E. Meijer, Maarten Fokkinga, Ross Paterson, "Functional Programming with Bananas , Lenses , Envelopes and Barbed Wire"
+
+- http://jtobin.ca/practical-recursion-schemes
+
+==============================================================================
+
+Preferred name         : Harold Carr
+
+Email for Google group : harold.carr@gmail.common
+
+Bio                    : Harold Carr works on cloud infrastructure at Oracle. He has worked on InfiniBand and pluggable transports, asynchronous and streaming I/O APIs. At Sun he did RMI-IIOP load-balancing and fail-over, CORBA and JAX-WS 2.0 implementation architecture, and the socket communications architecture (aka Grizzly). He did distributed Lisp and C++ at HP and Schlumberger, Lisp technology at Autodesk, and logic simulation for Cirrus Logic. He holds a Ph.D., in Computer Science from the University of Utah.
+
+Picture                : https://en.gravatar.com/haroldcarr
+
+Talk Title             : Refactoring Recursion
+
+Talk Description       : Recursion is the fundamental looping mechanism in functional programming. Harold shows how to factor recursion out of functions using "folds" and Haskell's `Foldable` and `Traversable` typeclasses. He then shows how to factor recursion out of data types like trees. The goal of these factorings is to write different types of recursion ONCE for all data types. Harold shows how to USE (not the underlying theory) generic folds (aka "catamorphism"), unfolds (aka "anamorphism") and unfolds followed by folds (aka "hylomorphism"). He concludes by mentioning other types of generic recursion that enable access to the internal state of the recursion (e.g., unfolds that can exit early).
+
+Difficulty level       : Beginner
+                         Note: the "factoring recursion out of data types", part, generally intermediate material, will be presented such that a beginner will take away knowledge of the existence of these techniques and how to use them - not the underlying theory of how they work.
