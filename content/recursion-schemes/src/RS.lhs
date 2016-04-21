@@ -86,16 +86,18 @@ Explicit Recursion
 
 note the pattern
 
-> sumE []     = 0
+> sumE    []  = 0
 > sumE (x:xs) = x +  sumE xs
 
-> andE []     = True
+> andE    []  = True
 > andE (x:xs) = x && andE xs
 
 same recursive structure, except
 
-- `0` or `True` for the base case (i.e., empty list)
-- `+` or `&&` for the operator in the inductive case
+- `0` or `True`
+    - for base case (i.e., empty list)
+- `+` or `&&`
+    - for operator in inductive case
 
 factor recursion out of functions with `fold`
 ============================================
@@ -146,9 +148,11 @@ as a fold
 
 }
 
-> lengthF        = foldr (\_ n -> 1 + n) 0
+> lengthF        = foldr  (\_ n -> 1 + n)  0
 
 ~~~{.haskell}
+lengthFL       = foldl' (const . P.succ) 0
+
  sumF                  andF                  lengthF
   +                     &&                      1+
  / \                   /  \                    /  \
@@ -166,7 +170,7 @@ to understand how this works, look at def of `foldr` :
 ~~~{.haskell}
 foldr :: (a -> b -> b) -> b -> [a] -> b
 foldr f z []     = z
-foldr f z (x:xs) = f x (fold f z xs)
+foldr f z (x:xs) = f x (foldr f z xs)
 ~~~
 
 ~~~{.haskell}
@@ -187,16 +191,18 @@ Process elements of a structure one-at-a-time, discarding the structure.
 
 ~~~{.haskell}
 class Foldable t where
-  -- | Right-associative fold of structure.
-  foldr :: (a -> b -> b) -> b -> t a -> b
+   -- | Right-associative fold of structure.
+   foldr :: (a -> b -> b) -> b -> t a -> b
+-- compare with list-based `foldr` sig:
+-- foldr :: (a -> b -> b) -> b -> [a] -> b
 ~~~
-
-derive using `{-# LANGUAGE DeriveFoldable #-}`
 
 > data Tree a = E
 >             | L a
 >             | B (Tree a) a (Tree a)
 >             deriving (Eq, Foldable, Functor, Show)
+
+derive using `{-# LANGUAGE DeriveFoldable #-}`
 
 ----
 
@@ -323,9 +329,10 @@ non-TC functions on `Foldable`
 factor recursion out of data types with `Fix`
 =============================================
 
-benefits: reason about recursion and base structures separately
-
-applicable to types that have recursive structure (e.g., lists, trees)
+- benefits:
+    - reason about recursion and base structures separately
+- applicable to types that have recursive structure
+    - e.g., lists, trees
 
 ~~~{.haskell}
 data Natural = Zero | Succ Natural
@@ -375,7 +382,7 @@ fix           = Fix
 Working with fixed data-types
 =============================
 
-a type class (using functional dependencies [FD]) to
+a type class (using `FunctionalDependencies` [FD]) to
 (transparently) apply isomorphism between (un)fixed representations
 
 > class Functor f => Fixpoint f t | t -> f where
@@ -405,7 +412,7 @@ smart constructors
 > succ  = Fix . SuccF
 
 > sc = U.t "sc"
->           (succ       (succ       (succ       zero)))
+>      (succ       (succ       (succ        zero     )))
 >      (Fix (SuccF (Fix (SuccF (Fix (SuccF (Fix ZeroF)))))))
 
 ----
@@ -444,9 +451,9 @@ recusion as library functions
 =============================
 
 \begin{tabular}{ l l p{6cm} }
-`cata`  &    catamorphism  & folds \\
-`ana`   &    anamorphisms  & unfolds \\
-`hylo`  &    hylomorphism  & anamorphisms followed by catamorphisms (corecursive production followed by recursive consumption) \\
+{\tt cata}  &    catamorphism  & folds \\
+{\tt ana}   &    anamorphisms  & unfolds \\
+{\tt hylo}  &    hylomorphism  & {\tt ana} then {\tt cata} (corecursive production followed by recursive consumption) \\
 ...     &    ...           & ... \\
 \end{tabular}
 
@@ -459,7 +466,6 @@ Catamorphisms
 
 - models (internal) *iteration*
 - goal: write `foldr` once for all data-types
-- category theory shows how to define it generically for a functor fixed-point
 
 ----
 
@@ -485,15 +491,19 @@ cata alg = alg . fmap (cata alg) . unFix
 
 ----
 
+> -- abbreviation used in equational reasoning
 > nia :: Num a => NatF a -> a
 > nia  ZeroF    = 0
 > nia (SuccF n) = n + 1
 
 ~~~{.haskell}
+-- derived
 instance Functor NatF where
     fmap _ ZeroF     = ZeroF
     fmap f (SuccF z) = SuccF (f z)
 ~~~
+
+\fontsize{7pt}{7.5}\selectfont
 
 > ni2 = U.tt "ni2"
 >   [ natToInt                            (succ       (succ       zero))
@@ -523,7 +533,7 @@ instance Functor NatF where
 >                  | otherwise = xs
 
 ~~~{.haskell}
--- derivation
+-- derived
 instance Functor (ListF a) where
   fmap _ N        = N
   fmap f (C x xs) = C x (f xs)
@@ -541,7 +551,7 @@ Anamorphisms
 
 - corecursive dual of catamorphisms
 - produces streams and other regular structures from a seed
-- `ana` for lists is `unfoldr` (view patterns help see the duality)
+- `ana` for lists is `unfoldr` (`ViewPatterns` help see the duality)
 
 ~~~{.haskell}
 foldrP  :: (Maybe (a, b) -> b) -> [a] -> b
@@ -555,7 +565,7 @@ foldrP f (x:xs) = f (Just (x, foldrP f xs))
 
 ----
 
-examples
+list examples
 ------------------------------------------------------
 
 > replicate :: Int -> a -> [a]
@@ -601,7 +611,7 @@ Corecursion
 
 anamorphism is *corecursive*
 
-- the dual of catamorphisms/recursion
+- dual of catamorphisms / recursion
 
 corecursion produces (potentially infinite) *codata*
 
@@ -609,18 +619,21 @@ recursion consumes (necessarily finite) *data*
 
 ----
 
-There is no enforced distinction between data and codata in Haskell,
-so use of `Fix` again
+No checked distinction between data and codata in Haskell
 
-~~~{.haskell}
-cata :: Functor f => (f a -> a) -> Fix f -> a
-cata alg = alg . fmap (cata alg) . unFix
-~~~
+- so use of `Fix` again
 
 > -- | anamorphism
 > ana :: Functor f => (a -> f a) -> a -> Fix f
 > ana coalg = Fix . fmap (ana coalg) . coalg
 >
+
+compare to
+
+~~~{.haskell}
+cata :: Functor f => (f a -> a) -> Fix f -> a
+cata alg  = alg . fmap (cata alg)  . unFix
+~~~
 
 ----
 
@@ -641,16 +654,21 @@ recursion is not part of the semantics
 
 to distinquish data/codata (useful when working with streams)
 
+> -- | The greatest fixpoint of functor f
+> newtype Cofix f = Cofix { unCofix :: f (Cofix f) }
+
+compare to
+
 ~~~{.haskell}
 newtype Fix f = Fix { unFix :: f (Fix f) }
 ~~~
 
-> -- | The greatest fixpoint of functor f
-> newtype Cofix f = Cofix { unCofix :: f (Cofix f) }
+use in `ana` definition
 
 > -- | an alternative anamorphism typed for codata
 > ana' :: Functor f => (a -> f a) -> a -> Cofix f
 > ana' coalg = Cofix . fmap (ana' coalg) . coalg
+
 
 ----
 
@@ -743,10 +761,10 @@ ana  g = hylo Fix g
 Example: Merge sort
 -------------------
 
-use tree data-type to capture divide-and-conquer pattern of recursion.
+use a tree to capture divide / conquer pattern of recursion
 
 - build balanced binary tree via anamorphism
-- fold it with a catamorphism
+- fold it with catamorphism
     - merging lists together and sorting as it goes
 
 > mergeSort :: Ord a => [a] -> [a]
@@ -756,8 +774,6 @@ use tree data-type to capture divide-and-conquer pattern of recursion.
 >     coalg [x]       = Leaf x
 >     coalg xs        = Bin l r where
 >        (l, r)       = splitAt (length xs `div` 2) xs
-
-note the fusion
 
 ----
 

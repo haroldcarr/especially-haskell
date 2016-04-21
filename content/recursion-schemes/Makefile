@@ -1,6 +1,6 @@
 #
 # Created       : 2015 Oct 28 (Wed) 17:42:11 by Harold Carr.
-# Last Modified : 2015 Dec 22 (Tue) 09:47:40 by Harold Carr.
+# Last Modified : 2016 Apr 20 (Wed) 11:57:54 by Harold Carr.
 #
 
 G                   = .generated
@@ -16,7 +16,7 @@ html:
                         -s
 
 clean :
-	stack clean
+	stack clean --full
 	rm $(G)/*
 
 # End of file.
