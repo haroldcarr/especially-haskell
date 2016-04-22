@@ -1,0 +1,5 @@
+
+
+[[https://wiki.haskell.org/Foldr_Foldl_Foldl']]
+
+[[./foldl-foldr.png]]

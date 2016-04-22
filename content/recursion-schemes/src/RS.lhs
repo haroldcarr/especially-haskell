@@ -1,3 +1,21 @@
+Refactoring Recursion
+=====================
+
+\begin{center}
+
+\LARGE{Harold Carr}
+
+wifi: jane-guest
+
+password: beourguest
+
+\end{center}
+
+- Tim Williams's recursion schemes presentation
+    - http://www.timphilipwilliams.com/slides.html
+    - https://www.youtube.com/watch?v=Zw9KeP3OzpU
+
+
 Introduction
 ============
 
@@ -206,7 +224,7 @@ derive using `{-# LANGUAGE DeriveFoldable #-}`
 
 ----
 
-Example data
+example data
 
 > f1 :: Tree Int
 > f1 = B (B (B (L  1)   2 E)
@@ -454,7 +472,9 @@ recusion as library functions
 {\tt cata}  &    catamorphism  & folds \\
 {\tt ana}   &    anamorphisms  & unfolds \\
 {\tt hylo}  &    hylomorphism  & {\tt ana} then {\tt cata} (corecursive production followed by recursive consumption) \\
-...     &    ...           & ... \\
+.           &    .             & .   \\
+.           &    .             & .   \\
+.           &    .             & .   \\
 \end{tabular}
 
 
@@ -485,7 +505,7 @@ cata alg = alg . fmap (cata alg) . unFix
 `alg` (i.e., "algebra") defines reduction semantics
 
 - _semantics are not defined recursively_
-- recursion has been decoupled: handled by `cata`
+- recursion has been factored out: handled by `cata`
 
 > ni = U.t "ni" (natToInt (succ (succ (succ zero)))) 3
 
@@ -586,10 +606,10 @@ list examples
 
 ----
 
-Example: merging lists
+example: merging lists
 ----------------------
 
-Given two sorted lists, `mergeLists` merges them into one sorted list.
+given two sorted lists, `mergeLists` merges them into one sorted list
 
 > mergeLists :: forall a. Ord a => [a] -> [a] -> [a]
 > mergeLists = curry $ unfoldr c where
@@ -654,13 +674,12 @@ recursion is not part of the semantics
 
 to distinquish data/codata (useful when working with streams)
 
-> -- | The greatest fixpoint of functor f
 > newtype Cofix f = Cofix { unCofix :: f (Cofix f) }
 
 compare to
 
 ~~~{.haskell}
-newtype Fix f = Fix { unFix :: f (Fix f) }
+newtype Fix   f = Fix   { unFix   :: f (Fix   f) }
 ~~~
 
 use in `ana` definition
@@ -672,7 +691,7 @@ use in `ana` definition
 
 ----
 
-Example: coinductive streams
+example: coinductive streams
 ----------------------------
 
 > -- like `List` but no base case (i.e., Nil)
@@ -733,23 +752,26 @@ NB. termination not guaranteed
 
 ----
 
-To see the explicit recursion, `cata` and `ana` can be fused together via substitution and the fmap-fusion Functor law:
+`cata` and `ana` can be fused
+
+- via substitution and fmap-fusion Functor law
 
 ~~~{.haskell}
 fmap p . fmap q = fmap (p . q)
 ~~~
 
-Giving:
+giving
 
 ~~~{.haskell}
 hylo f g = f . fmap (hylo f g) . g
 ~~~
 
-does not require the full structure built up for `cata` and `ana`
+means not necessary to build full structure for `cata` and `ana`
 
-NB. this transformation is the basis for *deforestation*, eliminating intermediate data structures.
+- basis for *deforestation*
+    - eliminating intermediate data structures
 
-- `cata` and `ana` could be defined as:
+side note : `cata` and `ana` could be defined as
 
 ~~~{.haskell}
 cata f = hylo f unFix
@@ -758,7 +780,7 @@ ana  g = hylo Fix g
 
 ----
 
-Example: Merge sort
+example: Merge sort
 -------------------
 
 use a tree to capture divide / conquer pattern of recursion
@@ -774,6 +796,8 @@ use a tree to capture divide / conquer pattern of recursion
 >     coalg [x]       = Leaf x
 >     coalg xs        = Bin l r where
 >        (l, r)       = splitAt (length xs `div` 2) xs
+
+note the fusion
 
 ----
 
@@ -793,12 +817,12 @@ Conclusion
 ==========
 
 - catamorphisms, anamorphisms hylomorphisms
-    - (folds, unfolds, and refolds)
+    - folds, unfolds, and refolds
     - fundamental
     - they can express all recursive computation
 - other recursion schemes : based on the above
     - offer more structure
-- recursion patterns enable reliable, efficient, parallel programs
+- enable reliable, efficient, parallel programs
 
 Recursion   Corecursion   General
 ----------  ------------  ---------
@@ -882,7 +906,7 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 
 ----
 
-Example: sliding window
+example: sliding window
 -----------------------
 
 > sliding :: Int -> [a] -> [[a]]
@@ -965,7 +989,7 @@ Zygomorphism
 
 ----
 
-Example: using evaluation to find discontinuities
+example: using evaluation to find discontinuities
 -------------------------------------------------
 
 count number of live conditionals causing discontinuities due to an arbitrary supplied environment,
@@ -1032,7 +1056,7 @@ then collapses tree producing result
 
 ----
 
-Example: computing Fibonacci numbers
+example: computing Fibonacci numbers
 ------------------------------------
 
 > fib :: Integer -> Integer
@@ -1056,7 +1080,7 @@ $$
 
 ----
 
-Example: filtering by position
+example: filtering by position
 ------------------------------
 
 The function `evens` takes every second element from the given list.
@@ -1097,7 +1121,7 @@ Futumorphism
 
 ----
 
-Example: stream processing
+example: stream processing
 --------------------------
 
 pairwise exchanges elements of stream
@@ -1286,7 +1310,7 @@ h :: a -> b
 
 ----
 
-Example: expressions
+example: expressions
 -------------------------------------
 
 > data ExprF r = Const Int
@@ -1304,7 +1328,7 @@ Example: expressions
 
 isomorphism between data-type and its pattern functor type handled by `Fix` and `unFix`
 
-Example: evaluator with global environment
+example: evaluator with global environment
 ------------------------------------------
 
 > type Env = Map Id Int
@@ -1335,7 +1359,7 @@ Example: evaluator with global environment
 
 ----
 
-An example expression
+an example expression
 ---------------------
 
 \vspace{0.2in}
@@ -1356,7 +1380,7 @@ An example expression
 
 ----
 
-Example: collecting free variables
+example: collecting free variables
 ----------------------------------
 
 > freeVars :: Expr -> S.Set Id
@@ -1371,7 +1395,7 @@ Example: collecting free variables
 
 ----
 
-Example: substituting variables
+example: substituting variables
 -------------------------------
 
 > substitute :: Map Id Expr -> Expr -> Expr
@@ -1391,7 +1415,7 @@ Composing Algebras
 - in general, catamorphisms do not compose
 - useful special case
 
-Example: an optimisation pipeline
+example: an optimisation pipeline
 ---------------------------------
 
 > optAdd :: ExprF Expr -> Expr
@@ -1546,7 +1570,7 @@ Compositional Data-types
 
 ----
 
-Example: Templating
+example: Templating
 -------------------
 
 - type-safe templating requires a syntax tree with holes
@@ -1580,7 +1604,7 @@ Fill all the holes of type `a` in the template `Ctx f a` using the supplied func
 
 ----
 
-Example: add template variables to JSON by composing data types and parsers.
+example: add template variables to JSON by composing data types and parsers.
 
 - need an "unfixed" JSON datatype and parser (see appendix)
 
@@ -1636,7 +1660,7 @@ pJSValueF :: CharParser () r ->
 
 ----
 
-Example: Annotating
+example: Annotating
 -------------------
 
 - useful for storing intermediate values
@@ -1769,7 +1793,7 @@ Define a variant combinator `cataM` that enables using an algebra with a monadic
 
 ----
 
-Example: eval revisited
+example: eval revisited
 -----------------------
 
 - `cataM` simplifies working with a monadic algebra carrier types\footnote{compare and contrast the `IfNeg` clause between eval and eval'}
