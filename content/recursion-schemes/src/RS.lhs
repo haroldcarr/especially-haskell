@@ -893,24 +893,24 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 > falg (SuccF (f, n)) = f * (n + 1)
 
 > factEqR = U.tt "factEqR"
->   [ fact 2
->   , para falg 2
->   , (falg . fmap (para falg &&& id) . outF) 2
->   , (falg . fmap (para falg &&& id)) (SuccF 1)
->   , (falg   (SuccF ((para falg &&& id) 1)))
->   , (falg   (SuccF (para falg 1, id 1)))
->   , (para falg 1) * (id 1 + 1)
->   , (para falg 1) * 2
->   , (falg . fmap (para falg &&& id) . outF) 1 * 2
->   , (falg . fmap (para falg &&& id)) (SuccF 0) * 2
->   , (falg   (SuccF ((para falg &&& id) 0))) * 2
->   , (falg   (SuccF (para falg 0, id 0))) * 2
->   , (para falg 0) * (id 0 + 1) * 2
->   , (para falg 0) *         1  * 2
->   , (falg . fmap (para falg &&& id) . outF) 0 *         1  * 2
->   , (falg . fmap (para falg &&& id)) ZeroF    *         1  * 2
->   , (falg                            ZeroF)   *         1  * 2
->   , 1   *         1  * 2
+>   [                  fact                        2
+>   ,                  para falg                   2
+>   , (falg .    fmap (para falg &&&   id) . outF) 2
+>   , (falg .    fmap (para falg &&&   id)) (SuccF 1)
+>   ,  falg   (SuccF ((para falg &&&   id)         1))
+>   ,  falg   (SuccF  (para falg 1,    id          1))
+>   ,                  para falg                   1              * id 1 + 1
+>   ,                  para falg                   1              * 2
+>   , (falg .    fmap (para falg &&&   id) . outF) 1              * 2
+>   , (falg .    fmap (para falg &&&   id)) (SuccF 0)             * 2
+>   ,  falg   (SuccF ((para falg &&&   id)         0))            * 2
+>   ,  falg   (SuccF  (para falg 0,    id          0))            * 2
+>   ,                  para falg                   0   * id 0 + 1 * 2
+>   ,                  para falg                   0   *        1 * 2
+>   , (falg .    fmap (para falg &&&   id) . outF) 0   *        1 * 2
+>   , (falg .    fmap (para falg &&&   id)) ZeroF      *        1 * 2
+>   ,  falg                                 ZeroF      *        1 * 2
+>   ,                                           1      *        1 * 2
 >   ]
 >   2
 
