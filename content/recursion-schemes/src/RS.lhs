@@ -94,6 +94,14 @@ Overview
 > import           Text.ParserCombinators.Parsec hiding (many, space, (<|>))
 > import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
 > import qualified Text.PrettyPrint.Leijen       as PP (brackets, (<>))
+>
+> {-# ANN module "HLint: ignore Use foldr"   #-}
+> {-# ANN module "HLint: ignore Use sum"     #-}
+> {-# ANN module "HLint: ignore Use and"     #-}
+> {-# ANN factEqR "HLint: ignore"            #-}
+> {-# ANN foldrX "HLint: ignore"            #-}
+> {-# ANN fxl "HLint: ignore"            #-}
+>
 
 }
 
@@ -888,6 +896,7 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 
 ----
 
+> -- factorial algebra
 > falg :: Num a => NatF (a, a) -> a
 > falg ZeroF          = 1
 > falg (SuccF (f, n)) = f * (n + 1)
@@ -927,12 +936,12 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 
 > tailL :: List a -> List a
 > tailL = para alg where
->     alg  N            = nil
+>     alg  N           = nil
 >     alg (C _ (_, l)) = l
 
 > tl = U.t "tl"
 >      (tailL (cons 1 (cons (2::Int) nil)))
->      (cons 2 nil)
+>                     (cons  2       nil)
 
 ----
 
