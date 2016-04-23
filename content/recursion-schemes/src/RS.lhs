@@ -95,12 +95,12 @@ Overview
 > import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
 > import qualified Text.PrettyPrint.Leijen       as PP (brackets, (<>))
 >
-> {-# ANN module "HLint: ignore Use foldr"   #-}
-> {-# ANN module "HLint: ignore Use sum"     #-}
-> {-# ANN module "HLint: ignore Use and"     #-}
-> {-# ANN factEqR "HLint: ignore"            #-}
-> {-# ANN foldrX "HLint: ignore"            #-}
-> {-# ANN fxl "HLint: ignore"            #-}
+> {-# ANN module "HLint: ignore Use foldr" #-}
+> {-# ANN module "HLint: ignore Use sum"   #-}
+> {-# ANN module "HLint: ignore Use and"   #-}
+> {-# ANN factEqR "HLint: ignore"          #-}
+> {-# ANN foldrX "HLint: ignore"           #-}
+> {-# ANN fxl "HLint: ignore"              #-}
 >
 
 }
@@ -568,8 +568,8 @@ instance Functor (ListF a) where
 ~~~
 
 > fi = U.t "fi"
->      (filterL even (cons 1 (cons 2 nil)))
->      (cons 2 nil)
+>      (filterL even (cons 1 (cons (2::Int) nil)))
+>                            (cons  2       nil)
 
 
 Anamorphisms
@@ -590,6 +590,12 @@ foldrP f (x:xs) = f (Just (x, foldrP f xs))
 > unfoldr :: (b -> Maybe (a, b)) ->  b -> [a]
 > unfoldr f (f -> Nothing)                   = []
 > unfoldr f (f -> Just (x, unfoldr f -> xs)) = x : xs
+
+\ignore {
+
+> unfoldr _ _ = matchAll "unfoldr"
+
+}
 
 ----
 
@@ -627,9 +633,10 @@ given two sorted lists, `mergeLists` merges them into one sorted list
 >   c (x:xs, [])            = Just (x, (xs, []))
 >   c (x:xs, y:ys) | x <= y = Just (x, (xs, y:ys))
 >                  | x > y  = Just (y, (x:xs, ys))
+>   c (_:_,_:_)             = matchAll "mergeLists"
 
 > ml = U.t "ml"
->      (mergeLists [1,4] [2,3,5])
+>      (mergeLists [1,4] [2,3,5::Int])
 >      [1,2,3,4,5]
 
 ----
@@ -992,6 +999,7 @@ uses apomorphism to generate
 >   c (C x [])              = C x (Left N)
 >   c (C x (y:xs)) | x <= y = C x (Right (y:xs))
 >                  | x > y  = C y (Left (C x xs))
+>   c _                     = matchAll "insertElem"
 
 > ie = U.t "ie"
 >      (insertElem (C 3 [1::Int,2,5]))
@@ -1103,6 +1111,7 @@ example: computing Fibonacci numbers
 >   f ZeroF                                         = 0
 >   f (SuccF (unAnn -> (ZeroF,_)))                  = 1
 >   f (SuccF (unAnn -> (SuccF (unAnn -> (_,n)),m))) = m + n
+>   f _    = matchAll "fib"
 
 $$
 \begin{array}{rcl}
@@ -1128,6 +1137,7 @@ The function `evens` takes every second element from the given list.
 >   alg N                      = []
 >   alg (C _ (strip -> N    )) = []
 >   alg (C _ (strip -> C x y)) = x : attr y
+>   alg _                      = matchAll "evens"
 
 > ev = U.t "ev"
 >      (evens [1..7::Int])
@@ -1225,7 +1235,7 @@ foldrP alg (x:xs) = alg (Just (x, foldrP alg xs))
 > mp (Just (a, bs)) = a + bs
 
 > fpl = U.tt "fpl"
->       [                      foldrP mp [1,2]
+>       [                      foldrP mp [1,2::Int]
 >       ,         mp (Just (1, foldrP mp   [2]))
 >       , 1 +                  foldrP mp   [2]
 >       , 1 +     mp (Just (2, foldrP mp   []))
@@ -1273,7 +1283,7 @@ foldrX alg = alg . fmap (id *** foldrX alg) . unList
 ~~~
 
 > fxl = U.tt "fxl"
->       [                            foldrX mp         [1, 2]
+>       [                            foldrX mp         [1, 2::Int]
 >       ,         (mp . fmap (id *** foldrX mp)) (Just (1,[2]))
 >       ,          mp   (Just (1,    foldrX mp            [2]))
 >       , 1 +                        foldrX mp            [2]
@@ -2069,7 +2079,12 @@ tikz-qtree printer for annotated trees
 >                            np ++ tl ++ sl ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
 >                            exs
 
+\ignore {
 
+> matchAll :: String -> a
+> matchAll msg = error (msg ++ " match all pattern")
+
+}
 
 References
 ==========
