@@ -861,6 +861,8 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 > para :: Fixpoint f t => (f (a, t) -> a) -> t -> a
 > para alg = alg . fmap (para alg &&& id) . outF
 
+-- (&&&) :: (b -> c) -> (b -> d) -> (b -> (c, d))
+
 ----
 
 - factorial : classic example of primitive recursion
@@ -883,6 +885,34 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 > infs = U.t "infs" (inF (SuccF 0) :: Integer) 1
 > otfz = U.t "otfz" (outF 0 :: NatF Integer) ZeroF
 > otfs = U.t "otfs" (outF 1 :: NatF Integer) (SuccF 0)
+
+----
+
+> falg :: Num a => NatF (a, a) -> a
+> falg ZeroF          = 1
+> falg (SuccF (f, n)) = f * (n + 1)
+
+> factEqR = U.tt "factEqR"
+>   [ fact 2
+>   , para falg 2
+>   , (falg . fmap (para falg &&& id) . outF) 2
+>   , (falg . fmap (para falg &&& id)) (SuccF 1)
+>   , (falg   (SuccF ((para falg &&& id) 1)))
+>   , (falg   (SuccF (para falg 1, id 1)))
+>   , (para falg 1) * (id 1 + 1)
+>   , (para falg 1) * 2
+>   , (falg . fmap (para falg &&& id) . outF) 1 * 2
+>   , (falg . fmap (para falg &&& id)) (SuccF 0) * 2
+>   , (falg   (SuccF ((para falg &&& id) 0))) * 2
+>   , (falg   (SuccF (para falg 0, id 0))) * 2
+>   , (para falg 0) * (id 0 + 1) * 2
+>   , (para falg 0) *         1  * 2
+>   , (falg . fmap (para falg &&& id) . outF) 0 *         1  * 2
+>   , (falg . fmap (para falg &&& id)) ZeroF    *         1  * 2
+>   , (falg                            ZeroF)   *         1  * 2
+>   , 1   *         1  * 2
+>   ]
+>   2
 
 ----
 
@@ -948,8 +978,7 @@ uses apomorphism to generate
 
 > insertElem :: forall a. Ord a => ListF a [a] -> [a]
 > insertElem = apo c where
->   c :: ListF a [a] ->
->        ListF a (Either (ListF a [a]) [a])
+>   c :: ListF a [a] -> ListF a (Either (ListF a [a]) [a])
 >   c N                     = N
 >   c (C x [])              = C x (Left N)
 >   c (C x (y:xs)) | x <= y = C x (Right (y:xs))
@@ -2027,7 +2056,7 @@ tikz-qtree printer for annotated trees
 >     runTestTT $ TestList $ f2fold ++ f1foldMap ++ ifi ++ ofi ++ f1foldr ++ f1foldr2 ++
 >                            sc ++ ni ++ ni2 ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
 >                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ mst ++ fct ++
->                            infz ++ infs ++ otfz ++ otfs ++
+>                            infz ++ infs ++ otfz ++ otfs ++ factEqR ++
 >                            np ++ tl ++ sl ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
 >                            exs
 
