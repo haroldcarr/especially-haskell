@@ -966,6 +966,20 @@ NB. lookahead via input arg is left-to-right, but input list processed from the 
 >      (sliding 3 [1..5::Int])
 >      [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
 
+example: slideing window 2
+
+> sliding2 :: Int -> [a] -> [[a]]
+> sliding2 n = para alg where
+>   alg N             = []
+>   alg (C x (r, xs)) | length (x:xs) < n = []
+>                     | otherwise         = take n (x:xs) : r
+
+NB. lookahead via input arg is left-to-right, but input list processed from the right
+
+> sl2 = U.t "sl2"
+>      (sliding2 3 [1..5::Int])
+>      [[1,2,3],[2,3,4],[3,4,5]]
+
 
 Apomorphisms
 ===========
@@ -2076,7 +2090,7 @@ tikz-qtree printer for annotated trees
 >                            sc ++ ni ++ ni2 ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
 >                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ mst ++ fct ++
 >                            infz ++ infs ++ otfz ++ otfs ++ factEqR ++
->                            np ++ tl ++ sl ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
+>                            np ++ tl ++ sl ++ sl2 ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
 >                            exs
 
 \ignore {
