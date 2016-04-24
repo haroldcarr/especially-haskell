@@ -980,6 +980,7 @@ NB. lookahead via input arg is left-to-right, but input list processed from the 
 >      (sliding2 3 [1..5::Int])
 >      [[1,2,3],[2,3,4],[3,4,5]]
 
+ http://stackoverflow.com/a/13317563/814846
 
 Apomorphisms
 ===========
@@ -1001,7 +1002,7 @@ apo coa = ana (coa ||| fmap Right . outF) . Left
 
 ----
 
-uses apomorphism to generate
+example: uses apomorphism to generate
 
 - new insertion step when `x>y`
 - short-circuits to final result when `x<=y`
@@ -1021,7 +1022,7 @@ uses apomorphism to generate
 
 ----
 
-insert every element of supplied list into a new list, using `cata`
+example: insert every element of supplied list into a new list, using `cata`
 
 > insertionSort :: Ord a => [a] -> [a]
 > insertionSort = cata insertElem
