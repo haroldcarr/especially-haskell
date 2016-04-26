@@ -12,7 +12,9 @@ module RSL where
 -- TODO http://comonad.com/reader/2008/time-for-chronomorphisms/
 
 import           Test.HUnit      (Counts, Test (TestList), runTestTT)
-import qualified Test.HUnit.Util as U (t, tt)
+import qualified Test.HUnit.Util as U (t)
+
+-- http://stackoverflow.com/questions/36851766/list-only-version-of-zygomorphism-and-futumorphism-recursion-schemes
 
 ------------------------------------------------------------------------------
 -- Recursion : cata  para  histo  zygo
@@ -29,10 +31,10 @@ paraL f b (a : as) = f a as (paraL  f b as)
 paraL _ b []       = b
 
 -- gives access to all previous values
-histoL :: ([a] -> a) -> [a] -> a
+histoL ::     ([a]      -> a)      -> [a] -> a
 histoL f = head . go where
     go [] = [f []]
-    go xs = let subvalues = go xs in f subvalues : subvalues
+    go xs = let histvals = go xs in f histvals : histvals
 
 -- TODO: zygo
 -- TODO https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/src/Generics-Pointless-RecursionPatterns.html#Zygo
@@ -83,3 +85,20 @@ hyloL':: (t -> t1 -> t1) -> t1 -> (t1 -> Maybe (t, t1)) -> t1
 hyloL' f z g = case g z of
     Nothing     -> z
     Just (x,z') -> f x (hyloL' f z' g)
+
+------------------------------------------------------------------------------
+-- test
+
+c1 :: [Test]
+c1 = U.t "c1"
+    (cataL ((:) . (+1)) [] [1,2,3::Int])
+    [2,3,4]
+
+c2 :: [Test]
+c2 = U.t "c2"
+    (cataL (+) 0 [1,2,3::Int])
+    6
+
+test :: IO Counts
+test =
+    runTestTT $ TestList $ c1 ++ c2
