@@ -87,7 +87,6 @@ futu  : access to values that recursion will compute in future
 http://jtobin.ca/time-traveling-recursion
 -}
 
-
 ------------------------------------------------------------------------------
 -- General: hylo
 
@@ -112,16 +111,6 @@ c2 :: [Test]
 c2 = U.t "c2"
     (cataL (+) 0 [1,2,3::Int])
     6
-
--- sliding2 :: Int -> [a] -> [[a]]
-sliding2 n = paraL alg [[1,2,3]] where
-    alg _ []        b                   = b
-    alg a0 as@(_:xs) b | length as  < n = []
-                       | otherwise      = take n as : alg a0 xs b
-
--- sl2 = U.t "sl2"
---    (sliding2 3 [1..5::Int])
---    [[1,2,3],[2,3,4],[3,4,5]]
 
 test :: IO Counts
 test =
