@@ -1039,9 +1039,10 @@ Zygomorphism
 - a generalisation of paramorphisms
 
 > algZygo :: Functor f =>
->     (f  b     -> b) ->
+>     (f     b  -> b) ->
 >     (f (a, b) -> a) ->
->     f (a, b) -> (a, b)
+>      f (a, b)       ->
+>        (a, b)
 > algZygo f g = g &&& f . fmap snd
 
 > zygo :: Functor f =>
