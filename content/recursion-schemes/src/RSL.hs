@@ -12,7 +12,7 @@ module RSL where
 -- TODO http://comonad.com/reader/2008/time-for-chronomorphisms/
 
 import           Test.HUnit      (Counts, Test (TestList), runTestTT)
-import qualified Test.HUnit.Util as U (t)
+import qualified Test.HUnit.Util as U (t, tt)
 
 -- http://stackoverflow.com/questions/36851766/list-only-version-of-zygomorphism-and-futumorphism-recursion-schemes
 
@@ -26,14 +26,18 @@ cataL :: (a ->        b -> b) -> b -> [a] -> b
 cataL f b (a : as) = f a    (cataL f b as)
 cataL _ b []       = b
 
+paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
+paraL f b (a : as) = f a as (paraL f b as)
+paraL _ b []       = b
+
 -- http://b-studios.de/blog/2016/02/21/the-hitchhikers-guide-to-morphisms/
 -- defines:
 -- para ∷    (f (μf , a)-> a)      -> μf  -> a
 -- which might be (for non-empty lists):
 -- para ∷     ([a] -> b -> b)      -> [a] -> b
-paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
-paraL f b (a : as) = f a as (paraL  f b as)
-paraL _ b []       = b
+paraL' :: (     [a] -> b -> b) -> b -> [a] -> b
+paraL' f b as@(_:xs) = f as (paraL' f b xs)
+paraL' _ b []        = b
 
 -- gives access to all previous values
 histoL ::     ([a]      -> a)      -> [a] -> a
@@ -112,6 +116,33 @@ c2 = U.t "c2"
     (cataL (+) 0 [1,2,3::Int])
     6
 
+tails :: [a] -> [[a]]
+tails = paraL (\a as b -> (a:as):b) []
+
+p1 :: [Test]
+p1 = U.t "p1"
+    (tails [1,2,3,4::Int])
+    [[1,2,3,4],[2,3,4],[3,4],[4]]
+
+slide :: Int -> [a] -> [[a]]
+slide n = paraL alg [] where
+    alg _ [] b                     = b
+    alg a as b | length (a:as) < n = b
+               | otherwise         = take n (a:as) : b
+
+slide' :: Int -> [a] -> [[a]]
+slide' n = paraL' alg [] where
+    alg [] b                 = b
+    alg as b | length as < n = b
+             | otherwise     = take n as : b
+
+p2 :: [Test]
+p2 = U.tt "p2"
+    [ slide  3 [1..6::Int]
+    , slide' 3 [1..6::Int]
+    ]
+    [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
+
 test :: IO Counts
 test =
-    runTestTT $ TestList $ c1 ++ c2
+    runTestTT $ TestList $ c1 ++ c2 ++ p1 ++ p2
