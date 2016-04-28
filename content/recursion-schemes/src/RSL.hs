@@ -58,6 +58,10 @@ histoL f = head . go where
 
 -- see comments above paraL
 -- zygo ∷ (f (a , b) → a) → (f b → b)       → μf → a
+-- I do not think this is right, but getting closer.
+zygoL :: (a -> [a] -> b -> b) -> (b -> b) -> b -> [a] -> b
+zygoL f g b (a : as) = f a as (zygoL f g b as)
+zygoL _ g b []       = g b
 
 ------------------------------------------------------------------------------
 -- Corecursion : ana  apo  futu
@@ -143,6 +147,19 @@ p2 = U.tt "p2"
     ]
     [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
 
+zlide :: Show a => Int -> [a] -> [String]
+zlide n = zygoL alg1 alg2 [] where
+    alg1 _ [] b                     = b
+    alg1 a as b | length (a:as) < n = b
+                | otherwise         = show (take n (a:as)) : b
+    -- alg2 :: (Show b) => b -> String
+    alg2      b                     = [show b]
+
+z1 :: [Test]
+z1 = U.t "z1"
+    (zlide 3 [1..6::Int])
+    ["[1,2,3]","[2,3,4]","[3,4,5]","[4,5,6]","[]"]
+
 test :: IO Counts
 test =
-    runTestTT $ TestList $ c1 ++ c2 ++ p1 ++ p2
+    runTestTT $ TestList $ c1 ++ c2 ++ p1 ++ p2 ++ z1
