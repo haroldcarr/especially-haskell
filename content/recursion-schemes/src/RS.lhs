@@ -1084,7 +1084,8 @@ note: check for redundant live conditionals for which both branches evaluate to 
 
 ----
 
-- by supplying `disconts` with a value for `b`, can look for discontinuities with respect to a new function over just `a`
+- by supplying `disconts` with a value for `b`,
+  can look for discontinuities with respect to a new function over just `a`
 
 > ofe2 = U.t "ofe2"
 >        (optimizeFast e2)

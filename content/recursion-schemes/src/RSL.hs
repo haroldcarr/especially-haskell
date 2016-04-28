@@ -26,6 +26,11 @@ cataL :: (a ->        b -> b) -> b -> [a] -> b
 cataL f b (a : as) = f a    (cataL f b as)
 cataL _ b []       = b
 
+-- http://b-studios.de/blog/2016/02/21/the-hitchhikers-guide-to-morphisms/
+-- defines:
+-- para ∷    (f (μf , a)-> a)      -> μf  -> a
+-- which might be (for non-empty lists):
+-- para ∷     ([a] -> b -> b)      -> [a] -> b
 paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
 paraL f b (a : as) = f a as (paraL  f b as)
 paraL _ b []       = b
@@ -40,6 +45,15 @@ histoL f = head . go where
 -- TODO https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/src/Generics-Pointless-RecursionPatterns.html#Zygo
 -- TODO http://dissertations.ub.rug.nl/faculties/science/1990/g.r.malcolm/
 -- TODO above thesis: http://cgi.csc.liv.ac.uk/~grant/PS/thesis.pdf
+-- TODO Refining Inductive Types http://arxiv.org/pdf/1205.2492.pdf
+-- TODO Has definition, but don't understand yet: http://www.iis.sinica.edu.tw/~scm/pub/mds.pdf
+
+-- semi-mutual iteration where two functions are defined simultaneously
+-- one being the function of interest
+-- the other an auxiliary function
+
+-- see comments above paraL
+-- zygo ∷ (f (a , b) → a) → (f b → b)       → μf → a
 
 ------------------------------------------------------------------------------
 -- Corecursion : ana  apo  futu
@@ -98,6 +112,16 @@ c2 :: [Test]
 c2 = U.t "c2"
     (cataL (+) 0 [1,2,3::Int])
     6
+
+-- sliding2 :: Int -> [a] -> [[a]]
+sliding2 n = paraL alg [[1,2,3]] where
+    alg _ []        b                   = b
+    alg a0 as@(_:xs) b | length as  < n = []
+                       | otherwise      = take n as : alg a0 xs b
+
+-- sl2 = U.t "sl2"
+--    (sliding2 3 [1..5::Int])
+--    [[1,2,3],[2,3,4],[3,4,5]]
 
 test :: IO Counts
 test =
