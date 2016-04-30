@@ -45,23 +45,12 @@ histoL f = head . go where
     go [] = [f []]
     go xs = let histvals = go xs in f histvals : histvals
 
--- TODO: zygo
--- TODO https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/src/Generics-Pointless-RecursionPatterns.html#Zygo
--- TODO http://dissertations.ub.rug.nl/faculties/science/1990/g.r.malcolm/
--- TODO above thesis: http://cgi.csc.liv.ac.uk/~grant/PS/thesis.pdf
--- TODO Refining Inductive Types http://arxiv.org/pdf/1205.2492.pdf
--- TODO Has definition, but don't understand yet: http://www.iis.sinica.edu.tw/~scm/pub/mds.pdf
-
--- semi-mutual iteration where two functions are defined simultaneously
--- one being the function of interest
--- the other an auxiliary function
-
--- see comments above paraL
--- zygo ∷ (f (a , b) → a) → (f b → b)       → μf → a
--- I do not think this is right, but getting closer.
-zygoL :: (a -> [a] -> b -> b) -> (b -> b) -> b -> [a] -> b
-zygoL f g b (a : as) = f a as (zygoL f g b as)
-zygoL _ g b []       = g b
+zygoL :: (a -> b -> b)      -> -- folding fun 1
+         (a -> b -> c -> c) -> -- folding fun 2 : depends on result of 1st fold
+         b -> c             -> -- zeroes for the two folds
+         [a]                -> -- input list
+         c                     -- result
+zygoL f g b0 c0 = snd . cataL (\a (b, c) -> (f a b, g a b c)) (b0, c0)
 
 ------------------------------------------------------------------------------
 -- Corecursion : ana  apo  futu
@@ -147,19 +136,6 @@ p2 = U.tt "p2"
     ]
     [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
 
-zlide :: Show a => Int -> [a] -> [String]
-zlide n = zygoL alg1 alg2 [] where
-    alg1 _ [] b                     = b
-    alg1 a as b | length (a:as) < n = b
-                | otherwise         = show (take n (a:as)) : b
-    -- alg2 :: (Show b) => b -> String
-    alg2      b                     = [show b]
-
-z1 :: [Test]
-z1 = U.t "z1"
-    (zlide 3 [1..6::Int])
-    ["[1,2,3]","[2,3,4]","[3,4,5]","[4,5,6]","[]"]
-
 test :: IO Counts
 test =
-    runTestTT $ TestList $ c1 ++ c2 ++ p1 ++ p2 ++ z1
+    runTestTT $ TestList $ c1 ++ c2 ++ p1 ++ p2

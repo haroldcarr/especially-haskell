@@ -1,7 +1,14 @@
 module Zygo where
 
+-- https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/src/Generics-Pointless-RecursionPatterns.html#Zygo
+-- http://dissertations.ub.rug.nl/faculties/science/1990/g.r.malcolm/
+-- above thesis: http://cgi.csc.liv.ac.uk/~grant/PS/thesis.pdf
+-- Refining Inductive Types http://arxiv.org/pdf/1205.2492.pdf
+-- Has definition, but don't understand yet: http://www.iis.sinica.edu.tw/~scm/pub/mds.pdf
+
 import           RSL
 {-
+http://stackoverflow.com/a/36911924/814846
 Zygomorphism
 - folds built from two semi-mutually-recursive functions.
 
@@ -9,7 +16,7 @@ E.G.:
 -}
 -- | intersperses + and - alternately through a list of numbers
 --   plusMinus [v,w,x,y,z] = v - (w + (x - (y + z)))
---   Primitive recursion version:
+--   primitive recursion version:
 plusMinusPR :: [Int] -> Int
 plusMinusPR [] = 0
 plusMinusPR (x:xs) = if (even . length) xs
@@ -19,9 +26,9 @@ plusMinusPR (x:xs) = if (even . length) xs
 lengthEven :: [a] -> Bool
 lengthEven = even . length
 {-
-plusMinus : not compositional : must inspect length of whole list to + or -
+plusMinusPR : not compositional : must inspect length of whole list to + or -
 
-Paramorphism : models primitive recursion. Rewrite to:
+since paramorphism models primitive recursion, rewrite:
 -}
 plusMinusP :: [Int] -> Int
 plusMinusP = paraL (\x xs acc -> pm (lengthEven xs) x acc) 0
@@ -31,9 +38,9 @@ pm b x acc = if b then x - acc else x + acc
 {-
 inefficient
 - lengthEven traverses whole list at each iteration of paramorphism
-- O(n2)
+- O(n^2)
 
-Note : lengthEven and para can be expressed as a catamorphism
+Note : lengthEven and para can be expressed as catamorphisms
 -}
 lengthEvenC :: [a] -> Bool
 lengthEvenC = cataL (\_ p -> not p) True
@@ -57,7 +64,7 @@ zygo :: (a -> b -> b)      -> -- folding fun 1
         b -> c             -> -- zeroes for the two folds
         [a]                -> -- input list
         c                     -- result
-zygo f g z e = snd . cataL (\x (p, q) -> (f x p, g x p q)) (z, e)
+zygo f g b0 c0 = snd . cataL (\a (b, c) -> (f a b, g a b c)) (b0, c0)
 {-
 On each iteration of the fold
 - f sees its  answer  from previous iteration
@@ -75,6 +82,8 @@ plusMinusZ = zygo (\_ p -> not p)
 {-
 higher order function (zygo) consumes list - O(n)
 - added logic to aggregate results
+
+------------------------------------------------------------------------------
 
 Generalising from lists to the fixpoint of an arbitrary functor:
 
