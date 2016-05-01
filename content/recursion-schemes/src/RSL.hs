@@ -39,11 +39,12 @@ paraL' :: (     [a] -> b -> b) -> b -> [a] -> b
 paraL' f b as@(_:xs) = f as (paraL' f b xs)
 paraL' _ b []        = b
 
+-- http://stackoverflow.com/a/24892711/814846
 -- gives access to all previous values
 histoL ::     ([a]      -> a)      -> [a] -> a
 histoL f = head . go where
     go [] = [f []]
-    go xs = let histvals = go xs in f histvals : histvals
+    go as = let histvals = go as in f histvals : histvals
 
 zygoL :: (a -> b -> b)      -> -- folding fun 1
          (a -> b -> c -> c) -> -- folding fun 2 : depends on result of 1st fold

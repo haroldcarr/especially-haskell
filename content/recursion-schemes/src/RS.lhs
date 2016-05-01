@@ -5,10 +5,6 @@ Refactoring Recursion
 
 \LARGE{Harold Carr}
 
-wifi: jane-guest
-
-password: beourguest
-
 \end{center}
 
 - Tim Williams's recursion schemes presentation
