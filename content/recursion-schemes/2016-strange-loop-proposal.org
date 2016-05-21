@@ -1,0 +1,40 @@
+Title: Refactoring Recursion
+
+Format : talk
+
+Track : languages
+
+Abstract :
+
+Recursion is the fundamental looping mechanism in functional programming. There are different patterns of recursion such as catamorphism (aka "fold"), anamorphism (aka "unfold"), hylomorphism, zygomorphism, histomorphism, etc. Existing talks and papers on these "recursion schemes" start closer to category theory, showing the morphisms in terms of algebras on "fixed" types. This talk, instead, will show simplified, list-only, versions of the various recursion schemes. It will start by showing a fold (catamorphism) on a list, then adding an argument, that represents the remainder of the list to be processed, to the folding function, resulting in a paramorphism. This makes it much easier to understand the schemes themselves and when to use them. The talk will conclude by mentioning (but not deep diving) how to factor explicit recursion out of recursive data types (e.g., trees), add the recursion via a `Fix` datatype and show how to then use generic versions of the recursion schemes on the resulting types (in other words, the talk will end where most others start). This talk is in Haskell. It is aimed at beginning to intermediate functional programmers.
+
+What will the attendee learn? [PRIVATE]:
+
+Existing material on recursion schemes starts at an advanced level. For example: Tim Williams's recursion schemes presentation : https://www.youtube.com/watch?v=Zw9KeP3OzpU
+
+This talk will start and mostly remain at a list-only level:
+
+cataL :: (a ->        b -> b) -> b -> [a] -> b
+cataL f b (a : as) = f a    (cataL f b as)
+cataL _ b []       = b
+
+paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
+paraL f b (a : as) = f a as (paraL f b as)
+paraL _ b []       = b
+
+This makes it much easier to understand the schemes themselves.
+
+Talk history:
+
+I gave a "Fix" version of this talk at the Utah Haskell meetup:
+
+http://www.meetup.com/utah-haskell/events/229613189/
+https://www.youtube.com/watch?v=6hy4-gmfzW4 (intro on folds)
+https://www.youtube.com/watch?v=wqoYYfbo8C4 ("Fix" morphisms)
+
+It was after giving the above talk that I realized a "list-only" recursion schemes presentation would be a much better approach to understanding the morphisms.
+
+The raw material for this talk is at:
+
+https://github.com/haroldcarr/especially-haskell/tree/master/content/recursion-schemes/src
+http://stackoverflow.com/questions/36851766/zygomorphisms-and-futumorphisms-specialised-to-lists

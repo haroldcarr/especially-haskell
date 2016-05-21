@@ -1,3 +1,6 @@
+NOTE: This talk was accepted at LambdaConf 2016 - but I declined.
+
+------------------------------------------------------------------------------
 Refactoring Recursion
 
 Recursion is the fundamental looping mechanism in functional programming. This talk will show several patterns of recursion using Haskell. In the first part of the talk Harold covers the case of factoring explicit recursion out of functions. He will start where beginners start: writing explicit recursive versions of `sum`, `product` and `length` of lists. The common recursive pattern found in those versions is then factored out into `fold` functions. Then `sum`, etc., are rewritten to use folds. Harold will then show how folds are generalized to work with other recursive types via the `Foldable` typeclass. This requires a `Foldable` instance to be written for new recursive types.

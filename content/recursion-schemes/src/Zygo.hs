@@ -8,6 +8,8 @@ module Zygo where
 
 import           RSL
 {-
+zygo : allows a directed dependency between two parallel folds.
+
 http://stackoverflow.com/a/36911924/814846
 Zygomorphism
 - folds built from two semi-mutually-recursive functions.
