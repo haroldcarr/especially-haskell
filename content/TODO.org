@@ -1,0 +1,2 @@
+"split" records into their natural keys and content in a data structure:
+    https://mail.haskell.org/pipermail/haskell-cafe/2016-July/124344.html
