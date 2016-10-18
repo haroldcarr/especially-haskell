@@ -1,2 +1,39 @@
 "split" records into their natural keys and content in a data structure:
     https://mail.haskell.org/pipermail/haskell-cafe/2016-July/124344.html
+
+interesting outline (from  http://www.hablapps.com/#functional-101):
+
+basic
+
+- What is functional programming?
+  - The modularity ladder
+  - Functions and algebraic data types
+  - Higher-order functions
+- Beyond higher-order functions
+  - Type classes
+  - Extensibility and design patterns
+- Taming impure functions
+  - Type constructor classes as Functional APIs
+  - Monadic APIs
+  - Composition of effects
+- Introduction to Spark
+  - The functional architecture of the Spark framework
+  - The DSL: RDD transformations
+  - The interpreter: RDD actions
+
+advanced
+
+- Monadic programming (I)
+  - Monad subclasses: State, error, plus, ...
+  - Monad transformers
+- Monadic programming (II)
+  - Free monads
+  - Coproducts
+- Applicative programming
+  - Applicative functors
+  - Traversables
+  - Free applicatives
+- Datatype generic programming
+  - Shapeless architecture
+  - HList, Coproduct and Fix
+  - Automatic type class derivation
