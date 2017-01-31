@@ -1,0 +1,47 @@
+Folds
+-----
+catamorphism: tears down a structure level by level
+paramorphism: tears down a structure with primitive recursion
+zygomorphism: tears down a structure with the aid of a helper function
+histomorphism: tears down a structure with the aid of the previous answers it has given.
+
+Unfolds
+-------
+anamorphism: builds up a structure level by level
+apomorphism: builds up a structure opting to return a single level or an entire branch at each point
+futumorphism: builds up a structure multiple levels at a time
+
+Refolds
+-------
+hylomorphism: builds up and tears down a virtual structure
+
+NOT COVERED:
+
+Folds
+-----
+prepromorphism: tears down a structure after repeatedly applying a natural transformation
+
+Unfolds
+-------
+postpromorphism: builds up a structure and repeatedly transforms it with a natural transformation
+
+Refolds
+-------
+chronomorphism: builds up a virtual structure with a futumorphism and tears it down with a histomorphism
+synchromorphism: a high level transformation between data structures using a third data structure to queue intermediate results exomorphism	Exo	a high level transformation between data structures from a trialgebra to a bialgebraga
+metamorphism: a hylomorphism expressed in terms of bialgebras
+metamorphism: a fold followed by an unfold; change of representation
+dynamorphism: builds up a virtual structure with an anamorphism and tears it down with a histomorphism
+Elgot algebra: builds up a structure and tears it down but may shortcircuit the process during construction
+Elgot coalgebra: builds up a structure and tears it down but may shortcircuit the process during deconstruction
+
+------------------------------------------------------------------------------
+Refactoring Recursion
+
+Recursion is the fundamental looping mechanism in functional programming. This talk will show several patterns of recursion using Haskell. In the first part of the talk Harold covers the case of factoring explicit recursion out of functions. He will start where beginners start: writing explicit recursive versions of `sum`, `product` and `length` of lists. The common recursive pattern found in those versions is then factored out into `fold` functions.
+
+The talk will proceed along the same mannger with other folds, unfolds and refolds.
+
+Then end of the talk will mention that recursion can also be factored out of data types but will not be covered (but attendees will be invited to work on that in the hallways).
+
+The talk is aimed at beginning and intermediate functional programmers.
