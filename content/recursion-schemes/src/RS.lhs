@@ -40,9 +40,9 @@ Overview
 
 ----
 
-\newcommand{\ignore}[1]{}
+\newcommand{\ignore1}[1]{}
 
-\ignore{
+\ignore1{
 
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 >
@@ -124,9 +124,9 @@ same recursive structure, except
 factor recursion out of functions with `fold`
 ============================================
 
-\newcommand{\ignore}[1]{}
+\newcommand{\ignore2}[1]{}
 
-\ignore{
+\ignore2{
 
 > sumF :: (Foldable t, Num b) => t b    -> b
 
@@ -134,7 +134,9 @@ factor recursion out of functions with `fold`
 
 > sumF  = foldr (+)  0
 
-\ignore{
+\newcommand{\ignore3}[1]{}
+
+\ignore3{
 
 > andF :: Foldable t          => t Bool -> Bool
 
@@ -162,9 +164,9 @@ another example: `length`
 
 as a fold
 
-\newcommand{\ignore}[1]{}
+\newcommand{\ignore4}[1]{}
 
-\ignore{
+\ignore4{
 
 > lengthF :: (Foldable t, Num b) => t a -> b
 
@@ -587,7 +589,9 @@ foldrP f (x:xs) = f (Just (x, foldrP f xs))
 > unfoldr f (f -> Nothing)                   = []
 > unfoldr f (f -> Just (x, unfoldr f -> xs)) = x : xs
 
-\ignore {
+\newcommand{\ignore5}[1]{}
+
+\ignore5 {
 
 > unfoldr _ _ = matchAll "unfoldr"
 
@@ -2092,7 +2096,9 @@ tikz-qtree printer for annotated trees
 >                            np ++ tl ++ sl ++ sl2 ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
 >                            exs
 
-\ignore {
+\newcommand{\ignore6}[1]{}
+
+\ignore6 {
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")

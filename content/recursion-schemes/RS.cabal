@@ -8,7 +8,11 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Futu, RS, RSL, Zygo
+  exposed-modules:     Futu
+                     , RS
+                     , RSL
+                     , RSL17
+                     , Zygo
   build-depends:       base
                      , bool-extras
                      , containers
