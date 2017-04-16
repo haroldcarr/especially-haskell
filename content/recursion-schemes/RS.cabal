@@ -26,3 +26,4 @@ library
                      , test-hunit-util
                      , wl-pprint
   default-language:    Haskell2010
+  ghc-options:         -Wall

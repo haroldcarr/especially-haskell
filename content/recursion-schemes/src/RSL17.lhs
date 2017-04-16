@@ -58,34 +58,13 @@ Overview
 >
 > module RSL17 where
 >
-> import           Control.Applicative   (empty, many, (<|>))
-> import           Control.Arrow         (second, (&&&), (***), (|||))
-> import           Control.Monad.Reader  (ReaderT, ask, fix, lift, runReaderT, (<=<))
-> import           Control.Monad.ST      (ST, runST)
-> import           Data.Foldable         (fold)
-> import           Data.Functor.Foldable (Fix(..))
-> import           Data.Functor.Identity as DFI (Identity (..))
-> import           Data.List.Ordered     as O (merge)
-> import           Data.Map              as M (Map, fromList, lookup)
-> import           Data.Maybe            (fromMaybe, isJust)
-> import           Data.Monoid           (Sum (..), getSum, (<>))
-> import           Data.Set              as S (Set, fromList, singleton)
-> import           Numeric               (readFloat, readSigned)
+> import           Control.Arrow         (second)
 > import           Prelude               as P hiding (replicate, succ)
 >
 > -- Third-party Hackage packages
 >
-> import           Data.Bool.Extras              (bool)
-> import           Data.Hashable                 (Hashable, hashWithSalt)
-> import           Data.HashTable.Class          (HashTable)
-> import qualified Data.HashTable.Class          as H (insert, lookup, new)
-> import qualified Data.HashTable.ST.Cuckoo      as C (HashTable)
 > import           Test.HUnit                    (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util               as U (t, tt)
-> import           Text.Parsec.Prim              (ParsecT)
-> import           Text.ParserCombinators.Parsec hiding (many, space, (<|>))
-> import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
-> import qualified Text.PrettyPrint.Leijen       as PP (brackets, (<>))
 >
 > {-# ANN module "HLint: ignore Use foldr" #-}
 > {-# ANN module "HLint: ignore Use sum"   #-}
@@ -354,22 +333,156 @@ example: coinductive streams
 > iterateS f = anaL c where
 >   c x = (x, f x)
 
-> s1 :: [Integer]
-> s1 = iterateS (+1) 1
+> sFrom1 :: [Integer]
+> sFrom1 = iterateS (+1) 1
+
+> s1s :: [Integer]
+> s1s = iterateS (id) 1
 
 > takeS :: Int -> [a] -> [a]
 > takeS 0     _  = []
+> takeS _    []  = []
 > takeS n (x:xs) = x : takeS (n-1) xs
 
-> ts = U.t "ts"
->      (takeS 6 s1)
->      [1,2,3,4,5,6]
+> tsf = U.t "tsf"
+>       (takeS 6 sFrom1)
+>       [1,2,3,4,5,6]
+
+> tss = U.t "tss"
+>       (takeS 6 s1s)
+>       [1,1,1,1,1,1]
+
+
+------------------------------------------------------------------------------
+
+hylomorphism
+============
+
+> hyloL :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
+> hyloL f z g = cataL f z . anaL' g
+
+> -- fusion/deforestation
+> hyloL':: (a -> c -> c) -> c -> (c -> Maybe (a, c)) -> c
+> hyloL' f z g = case g z of
+>   Nothing     -> z
+>   Just (x,z') -> f x (hyloL' f z' g)
+
+> hl :: (Integral a, Show a) => [a] -> [(a, a)]
+> hl b = hyloL f [] g b
+>  where
+>   g      []   = Nothing
+>   g  (x:xs)   = Just ((x,x*2), xs)
+>   f a@(l,_) c = if even l then a : c else c
+
+> hle = U.t "hle"
+>       (hl [1,2,3,4,5::Int])
+>       [(2,4),(4,8)]
+
+------------------------------------------------------------------------------
+
+Paramorphisms
+=============
+
+*para* meaning *beside* : extension of catamorphism
+
+- enables access to the original input structures
+- provides access to input arg corresponding to running state of the recursion
+
+> paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
+> paraL f b (a : as) = f a as (paraL f b as)
+> paraL _ b []       = b
+
+> -- http://b-studios.de/blog/2016/02/21/the-hitchhikers-guide-to-morphisms/
+> -- defines:
+> -- para ∷    (f (μf , a)-> a)      -> μf  -> a
+> -- which might be (for non-empty lists):
+> -- para ∷     ([a] -> b -> b)      -> [a] -> b
+> paraL':: (     [a] -> b -> b) -> b -> [a] -> b
+> paraL' f b as@(_:xs) = f as (paraL' f b xs)
+> paraL' _ b []        = b
+
+> tails :: [a] -> [[a]]
+> tails = paraL (\_ as b -> as:b) []
+
+> p1 :: [Test]
+> p1 = U.t "p1"
+>      (tails [1,2,3,4::Int])
+>      [[2,3,4],[3,4],[4],[]]
+
+
+> slide :: Int -> [a] -> [[a]]
+> slide n = paraL alg [] where
+>   alg _ [] b                     = b
+>   alg a as b | length (a:as) < n = b
+>              | otherwise         = take n (a:as) : b
+
+sliding n = para alg where
+  alg N             = []
+  alg (C x (r, xs)) = take n (x:xs) : r
+
+NB. lookahead via input arg is left-to-right, but input list processed from the right
+
+sl = U.t "sl"
+     (sliding 3 [1..5::Int])
+     [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
+
+> slide' :: Int -> [a] -> [[a]]
+> slide' n = paraL' alg [] where
+>   alg [] b                 = b
+>   alg as b | length as < n = b
+>            | otherwise     = take n as : b
+
+example: slideing window 2
+
+sliding2 :: Int -> [a] -> [[a]]
+sliding2 n = para alg where
+  alg N             = []
+  alg (C x (r, xs)) | length (x:xs) < n = []
+                    | otherwise         = take n (x:xs) : r
+
+NB. lookahead via input arg is left-to-right, but input list processed from the right
+
+sl2 = U.t "sl2"
+      (sliding2 3 [1..5::Int])
+      [[1,2,3],[2,3,4],[3,4,5]]
+
+ http://stackoverflow.com/a/13317563/814846
+
+> p2 :: [Test]
+> p2 = U.tt "p2"
+>      [ slide  3 [1..6::Int]
+>      , slide' 3 [1..6::Int]
+>      ]
+>      [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
+
+------------------------------------------------------------------------------
+
+apomorphism
+===========
+
+> apoL  :: (b -> Maybe (a, b)) -> (b -> [a]) -> b -> [a]
+> apoL f h b = case f b of
+>   Just (a, b') -> a : apoL f h b'
+>   Nothing      -> h b
+
+> ap :: (Num a, Ord a) => [a] -> [a]
+> ap = apoL f h
+>  where
+>   f    []  = Nothing
+>   f (x:xs) = if x < 5 then Just (x*10,xs) else Nothing
+>   h = id
+
+> ae :: [Test]
+> ae = U.t "ae"
+>      (ap [1,3,5,7,9::Int])
+>      [10,30,5,7,9]
 
 ------------------------------------------------------------------------------
 
 > main :: IO Counts
 > main =
->     runTestTT $ TestList $ c1 ++ c2 ++ c2' ++ rep ++ lb ++ ml ++ ts
+>   runTestTT $ TestList $ c1 ++ c2 ++ c2' ++ rep ++ lb ++ ml ++ tsf ++ tss ++
+>                          hle ++ p1 ++ p2 ++ ae
 
 ------------------------------------------------------------------------------
 

@@ -88,11 +88,14 @@ http://jtobin.ca/time-traveling-recursion
 ------------------------------------------------------------------------------
 -- General: hylo
 
+-- Recursion Patterns as Hylomorphisms
+-- http://www4.di.uminho.pt/~mac/Publications/DI-PURe-031101.pdf
+
 hyloL :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
 hyloL f z g = cataL f z . anaL' g
 
 -- fusion/deforestation
-hyloL':: (t -> t1 -> t1) -> t1 -> (t1 -> Maybe (t, t1)) -> t1
+hyloL':: (a -> c -> c) -> c -> (c -> Maybe (a, c)) -> c
 hyloL' f z g = case g z of
     Nothing     -> z
     Just (x,z') -> f x (hyloL' f z' g)

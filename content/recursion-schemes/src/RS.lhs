@@ -1028,7 +1028,7 @@ example: insert every element of supplied list into a new list, using `cata`
 > insertionSort = cata insertElem
 
 > iss = U.t "iss"
->       (insertionSort [5,9,3,1::Int,2])
+>       (insertionSort [5,9,3,1,2::Int])
 >       [1,2,3,5,9]
 
 Zygomorphism
