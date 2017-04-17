@@ -1,0 +1,53 @@
+------------------------------------------------------------------------------
+
+Prelude> let xs = map show [1..5]
+Prelude> foldr (\x y -> concat ["(",x,"+",y,")"]) "0" xs
+
+"(1+(2+(3+(4+(5+0)))))"
+
+Prelude> let f = (\x y -> concat ["(",x,"+",y,")"])
+Prelude> foldl f "0" (map show [1..5])
+
+"(((((0+1)+2)+3)+4)+5)"
+
+http://h2.jaguarpaw.co.uk/posts/polymorphic-recursion-combinator/
+http://conal.net/talks/folds-and-unfolds.pdf
+http://comonad.com/reader/2009/recursion-schemes/
+https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/Generics-Pointless-Examples-Examples.html
+https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/Generics-Pointless-RecursionPatterns.html
+http://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/urs.pdf
+http://cs.ioc.ee/~tarmo/papers/nwpt97-peas.pdf
+http://www.amazon.com/Algebraic-Coalgebraic-Methods-Mathematics-Construction/dp/3540436138
+http://www.staff.science.uu.nl/~jeuri101/afp/afp4/
+http://www.mii.lt/informatica/pdf/INFO141.pdf
+http://comonad.com/reader/2008/time-for-chronomorphisms/
+
+------------------------------------------------------------------------------
+
+Functional Programming with Apomorphisms / Corecursion
+Varmo Vene, Tarmo Uustaluy
+http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.35.7317&rep=rep1&type=pdf
+
+
+Isomorphisms, Hylomorphisms and Hereditarily Finite Data Types in Haskell
+Paul Tarau
+https://pdfs.semanticscholar.org/8b73/092048d97e1361001da331ec2d43f86f4099.pdf
+
+
+Recursion Schemes, Part II: A Mob of Morphisms (blog)
+Patrick Thomson
+http://blog.sumtypeofway.com/an-introduction-to-recursion-schemes/
+http://blog.sumtypeofway.com/recursion-schemes-part-2/
+
+
+V Generative Recursion (from HtDP2e)
+http://www.ccs.neu.edu/home/matthias/HtDP2e/part_five.html
+
+
+Data.List Recursion Illustrated (great visualizations)
+https://colah.github.io/posts/2015-02-DataList-Illustrated/
+
+
+Lazy Dynamic Programming (blog)
+Tikhon Jelvis
+http://jelv.is/blog/Lazy-Dynamic-Programming/
