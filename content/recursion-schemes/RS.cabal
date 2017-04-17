@@ -8,7 +8,12 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Futu
+  exposed-modules:     Ana
+                     , Cata
+                     , Fixpoint
+                     , Futu
+                     , Hylo
+                     , Para
                      , RS
                      , RSL
                      , RSL17

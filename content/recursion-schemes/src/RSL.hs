@@ -1,16 +1,5 @@
 module RSL where
 
--- TODO http://conal.net/talks/folds-and-unfolds.pdf
--- TODO http://comonad.com/reader/2009/recursion-schemes/
--- TODO https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/Generics-Pointless-Examples-Examples.html
--- TODO https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/Generics-Pointless-RecursionPatterns.html
--- TODO http://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/urs.pdf
--- TODO http://cs.ioc.ee/~tarmo/papers/nwpt97-peas.pdf
--- TODO http://www.amazon.com/Algebraic-Coalgebraic-Methods-Mathematics-Construction/dp/3540436138
--- TODO http://www.staff.science.uu.nl/~jeuri101/afp/afp4/
--- TODO http://www.mii.lt/informatica/pdf/INFO141.pdf
--- TODO http://comonad.com/reader/2008/time-for-chronomorphisms/
-
 import           Test.HUnit      (Counts, Test (TestList), runTestTT)
 import qualified Test.HUnit.Util as U (t, tt)
 
@@ -87,9 +76,6 @@ http://jtobin.ca/time-traveling-recursion
 
 ------------------------------------------------------------------------------
 -- General: hylo
-
--- Recursion Patterns as Hylomorphisms
--- http://www4.di.uminho.pt/~mac/Publications/DI-PURe-031101.pdf
 
 hyloL :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
 hyloL f z g = cataL f z . anaL' g

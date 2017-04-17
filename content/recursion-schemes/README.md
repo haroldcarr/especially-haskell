@@ -1,6 +1,10 @@
-refactoring recursion
+refactoring recursion out of functions
 - explicit
 - fold
+- recursion schemes specialized to []
+
+refactoring recursion out of data
 - Foldable
-- recursion schemes
+- Fix
+- recursion schemes for any Fix type
 
