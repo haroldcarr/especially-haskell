@@ -13,10 +13,10 @@ Introduction
 - Recursion is a pattern
 - There are different patterns of recursion
 - "factoring" recursion : benefits
-    - communicate/reason about programs
     - code/idea reuse
-    - use a catalogue of theorems to optimise or prove properties
     - identify/exploit parallelism
+    - communicate/reason about programs
+    - use catalogue of theorems to optimise/prove properties
 
 Overview
 ========
@@ -85,10 +85,8 @@ note the pattern
 
 same recursive structure, except
 
-- `0` or `True`
-    - for base case (i.e., empty list)
-- `+` or `&&`
-    - for operator in inductive case
+- `0` or `True` : base case (i.e., empty list)
+- `+` or `&&`   : operator in inductive case
 
 factor recursion out of functions with `fold`
 ============================================
@@ -96,17 +94,11 @@ factor recursion out of functions with `fold`
 \iffalse
 
 > sumF :: (Foldable t, Num b) => t b    -> b
-
-\fi
-
-> sumF  = foldr (+)  0
-
-\iffalse
-
 > andF :: Foldable t          => t Bool -> Bool
 
 \fi
 
+> sumF  = foldr (+)  0
 > andF  = foldr (&&) True
 
 ~~~{.haskell}
@@ -122,12 +114,8 @@ factor recursion out of functions with `fold`
 
 ----
 
-another example: `length`
-
 > lengthE []     = 0
 > lengthE (_:xs) = 1 + lengthE xs
-
-as a fold
 
 \iffalse
 
@@ -139,7 +127,11 @@ as a fold
 
 ~~~{.haskell}
 lengthFL       = foldl' (const . P.succ) 0
+~~~
 
+\footnotesize
+
+~~~{.haskell}
  sumF                  andF                  lengthF
   +                     &&                      1+
  / \                   /  \                    /  \
@@ -150,9 +142,11 @@ lengthFL       = foldl' (const . P.succ) 0
     3   0                 True  True                _    0
 ~~~
 
+\normalsize
+
 ----
 
-to understand how this works, look at def of `foldr` :
+`foldr` execution
 
 ~~~{.haskell}
 foldr :: (a -> b -> b) -> b -> [a] -> b
