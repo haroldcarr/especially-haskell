@@ -1,17 +1,17 @@
 #
 # Created       : 2015 Oct 28 (Wed) 17:42:11 by Harold Carr.
-# Last Modified : 2017 Apr 09 (Sun) 15:01:13 by Harold Carr.
+# Last Modified : 2017 Apr 17 (Mon) 16:57:32 by Harold Carr.
 #
 
 G                   = .generated
 
-all : pdf1 pdf2 html
+all : pdf pdf17 html
 
-pdf1:
+pdf:
 	cd src; pandoc RS.lhs -o ../$(G)/RS.pdf \
                         -V theme:tim -t beamer --template tim.beamer
 
-pdf2:
+pdf17:
 	cd src; pandoc RSL17.lhs -o ../$(G)/RSL17.pdf \
                         -V theme:tim -t beamer --template tim.beamer
 

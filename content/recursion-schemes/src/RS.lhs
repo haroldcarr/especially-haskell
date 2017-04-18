@@ -40,9 +40,7 @@ Overview
 
 ----
 
-\newcommand{\ignore1}[1]{}
-
-\ignore1{
+\iffalse
 
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 >
@@ -99,7 +97,7 @@ Overview
 > {-# ANN fxl "HLint: ignore"              #-}
 >
 
-}
+\fi
 
 > -- TODO : without this, pandoc/pdf conversion complains
 
@@ -124,23 +122,19 @@ same recursive structure, except
 factor recursion out of functions with `fold`
 ============================================
 
-\newcommand{\ignore2}[1]{}
-
-\ignore2{
+\iffalse
 
 > sumF :: (Foldable t, Num b) => t b    -> b
 
-}
+\fi
 
 > sumF  = foldr (+)  0
 
-\newcommand{\ignore3}[1]{}
-
-\ignore3{
+\iffalse
 
 > andF :: Foldable t          => t Bool -> Bool
 
-}
+\fi
 
 > andF  = foldr (&&) True
 
@@ -164,13 +158,11 @@ another example: `length`
 
 as a fold
 
-\newcommand{\ignore4}[1]{}
-
-\ignore4{
+\iffalse
 
 > lengthF :: (Foldable t, Num b) => t a -> b
 
-}
+\fi
 
 > lengthF        = foldr  (\_ n -> 1 + n)  0
 
@@ -589,13 +581,11 @@ foldrP f (x:xs) = f (Just (x, foldrP f xs))
 > unfoldr f (f -> Nothing)                   = []
 > unfoldr f (f -> Just (x, unfoldr f -> xs)) = x : xs
 
-\newcommand{\ignore5}[1]{}
-
-\ignore5 {
+\iffalse
 
 > unfoldr _ _ = matchAll "unfoldr"
 
-}
+\fi
 
 ----
 
@@ -2096,14 +2086,12 @@ tikz-qtree printer for annotated trees
 >                            np ++ tl ++ sl ++ sl2 ++ ie ++ iss ++ fve2 ++ ofe2 ++ di ++ fibt ++ ev ++
 >                            exs
 
-\newcommand{\ignore6}[1]{}
-
-\ignore6 {
+\iffalse
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")
 
-}
+\fi
 
 References
 ==========

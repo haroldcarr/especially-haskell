@@ -36,9 +36,7 @@ Overview
 
 ----
 
-\newcommand{\ignore1}[1]{}
-
-\ignore1{
+\iffalse
 
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 >
@@ -70,7 +68,7 @@ Overview
 > {-# ANN module "HLint: ignore Use sum"   #-}
 > {-# ANN module "HLint: ignore Use and"   #-}
 
-}
+\fi
 
 > -- TODO : without this, pandoc/pdf conversion complains
 
@@ -95,23 +93,19 @@ same recursive structure, except
 factor recursion out of functions with `fold`
 ============================================
 
-\newcommand{\ignore2}[1]{}
-
-\ignore2{
+\iffalse
 
 > sumF :: (Foldable t, Num b) => t b    -> b
 
-}
+\fi
 
 > sumF  = foldr (+)  0
 
-\newcommand{\ignore3}[1]{}
-
-\ignore3{
+\iffalse
 
 > andF :: Foldable t          => t Bool -> Bool
 
-}
+\fi
 
 > andF  = foldr (&&) True
 
@@ -135,13 +129,11 @@ another example: `length`
 
 as a fold
 
-\newcommand{\ignore4}[1]{}
-
-\ignore4{
+\iffalse
 
 > lengthF :: (Foldable t, Num b) => t a -> b
 
-}
+\fi
 
 > lengthF        = foldr  (\_ n -> 1 + n)  0
 
@@ -208,7 +200,8 @@ Catamorphisms
 > cataL f b (a : as) = f a    (cataL f b as)
 > cataL _ b      []  = b
 
-> c1 = U.t "c1" (cataL ((++) . show) "" [1,2,3::Int]) "123"
+> c1 = U.t "c1" (cataL ((++) . show) "" [1,2,3::Int])
+>               "123"
 
 ----
 
@@ -218,8 +211,10 @@ Catamorphisms
 > filterL' :: (a -> Bool) -> [a] -> [a]
 > filterL' p = cataL (\x -> if p x then (x :) else id) []
 
-> c2 = U.t "c2"  (filterL  odd [1,2,3::Int]) [1,3]
-> c2'= U.t "c2'" (filterL' odd [1,2,3::Int]) [1,3]
+> c2 = U.tt "c2" [ (filterL  odd [1,2,3::Int])
+>                , (filterL' odd [1,2,3::Int])
+>                ]
+>                [1,3]
 
 ----
 
@@ -257,13 +252,11 @@ Corecursion
 > unfoldr f (f -> Nothing)                   = []
 > unfoldr f (f -> Just (x, unfoldr f -> xs)) = x : xs
 
-\newcommand{\ignore5}[1]{}
-
-\ignore5 {
+\iffalse
 
 > unfoldr _ _ = matchAll "unfoldr"
 
-}
+\fi
 
 ~~~{.haskell}
 foldrP  :: (Maybe (a, b) -> b) -> [a] -> b
@@ -474,12 +467,19 @@ apomorphism
 
 ------------------------------------------------------------------------------
 
+\iffalse
+
 > main :: IO Counts
 > main =
->   runTestTT $ TestList $ c1 ++ c2 ++ c2' ++ rep ++ lb ++ ml ++ tsf ++ tss ++
+>   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ lb ++ ml ++ tsf ++ tss ++
 >                          hle ++ p1 ++ p2 ++ ae
-
-------------------------------------------------------------------------------
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")
+
+\fi
+
+References
+==========
+
+todo
