@@ -463,8 +463,8 @@ apomorphism
 
 \iffalse
 
-> main :: IO Counts
-> main =
+> testRSL17 :: IO Counts
+> testRSL17 =
 >   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ lb ++ ml ++ tsf ++ tss ++
 >                          hle ++ p1 ++ p2 ++ ae
 

@@ -10,13 +10,20 @@ library
   hs-source-dirs:      src
   exposed-modules:     Ana
                      , Cata
+                     , Explicit
                      , Fixpoint
+                     , Foldable
                      , Futu
                      , Hylo
+                     , Intro
+                     , ListF
+                     , NatF
                      , Para
                      , RS
                      , RSL
                      , RSL17
+                     , Test
+                     , TreeF
                      , Zygo
   build-depends:       base
                      , bool-extras

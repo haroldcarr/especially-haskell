@@ -1,3 +1,6 @@
+NEXT: RS : Apomorphisms
+Then transfer material from RSL, etc to individual files
+
 ------------------------------------------------------------------------------
 
 Prelude> let xs = map show [1..5]
@@ -9,6 +12,8 @@ Prelude> let f = (\x y -> concat ["(",x,"+",y,")"])
 Prelude> foldl f "0" (map show [1..5])
 
 "(((((0+1)+2)+3)+4)+5)"
+
+A tutorial on the universality and expressiveness of fold
 
 http://h2.jaguarpaw.co.uk/posts/polymorphic-recursion-combinator/
 http://conal.net/talks/folds-and-unfolds.pdf
@@ -23,6 +28,9 @@ http://www.mii.lt/informatica/pdf/INFO141.pdf
 http://comonad.com/reader/2008/time-for-chronomorphisms/
 
 ------------------------------------------------------------------------------
+
+Functional Programming with Bananas, Lenses, Envelopes and Barbed Wire
+https://maartenfokkinga.github.io/utwente/mmf91m.pdf
 
 Functional Programming with Apomorphisms / Corecursion
 Varmo Vene, Tarmo Uustaluy

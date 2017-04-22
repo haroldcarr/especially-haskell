@@ -1,7 +1,13 @@
+> {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+>
 > module Hylo where
 >
-> import Ana
-> import Cata
+> import           Ana
+> import           Cata
+> import           Data.List.Ordered     as O (merge)
+> import           Test.HUnit            (Counts, Test (TestList), runTestTT)
+> import qualified Test.HUnit.Util       as U (t)
+> import           TreeF
 
 -- Recursion Patterns as Hylomorphisms
 -- http://www4.di.uminho.pt/~mac/Publications/DI-PURe-031101.pdf
@@ -58,3 +64,43 @@ side note : `cata` and `ana` could be defined as
 cata f = hylo f unFix
 ana  g = hylo Fix g
 ~~~~
+
+----
+
+example: Merge sort
+-------------------
+
+use a tree to capture divide / conquer pattern of recursion
+
+- build balanced binary tree via anamorphism
+- fold it with catamorphism
+    - merging lists together and sorting as it goes
+
+> mergeSort :: Ord a => [a] -> [a]
+> mergeSort = hylo alg coalg where
+>     alg (Leaf c)    = [c]
+>     alg (Bin xs ys) = O.merge xs ys
+>     coalg [x]       = Leaf x
+>     coalg xs        = Bin l r where
+>        (l, r)       = splitAt (length xs `div` 2) xs
+
+note the fusion
+
+----
+
+> mst = U.t "mst"
+>       (mergeSort [7,6,3,1,5,4,2::Int])
+>       [1,2,3,4,5,6,7]
+
+\begin{picture}(0,0)(0,0)
+\put(165,-50){\resizebox{2in}{!}{%
+\begin{tikzpicture}[]
+\Tree [.Bin [.Bin [.Leaf 7 ] [.Bin [.Leaf 6 ] [.Leaf 3 ] ] ] [.Bin [.Bin [.Leaf 1 ] [.Leaf 5 ] ] [.Bin [.Leaf 4 ] [.Leaf 2 ] ] ] ]
+\end{tikzpicture}}}
+\end{picture}
+
+------------------------------------------------------------------------------
+
+> testHylo :: IO Counts
+> testHylo  =
+>     runTestTT $ TestList {- $  -} mst

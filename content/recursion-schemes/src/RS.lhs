@@ -2004,9 +2004,9 @@ simple unfixed JSON parser
 >   where value = choice [ JSString <$> pString
 >                        , JSNumber <$> pNumber
 >                        , JSObject <$> pObject r
->                        , JSArray <$> pArray r
->                        , JSBool <$> pBool
->                        , JSNull <$ string "null"
+>                        , JSArray  <$> pArray r
+>                        , JSBool   <$> pBool
+>                        , JSNull   <$  string "null"
 >                        ]
 >                 <?> "JSON value"
 
@@ -2077,8 +2077,8 @@ tikz-qtree printer for annotated trees
 
 ----
 
-> main :: IO Counts
-> main =
+> testRS :: IO Counts
+> testRS =
 >     runTestTT $ TestList $ f2fold ++ f1foldMap ++ ifi ++ ofi ++ f1foldr ++ f1foldr2 ++
 >                            sc ++ ni ++ ni2 ++ fi ++ fpl ++ lx ++ fxl ++ ee1 ++ fve1 ++ svfe1 ++
 >                            os ++ opf ++ rep ++ lb ++ itn ++ ml ++ ts  ++ mst ++ fct ++

@@ -126,6 +126,6 @@ p2 = U.tt "p2"
     ]
     [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
 
-test :: IO Counts
-test =
+testRSL :: IO Counts
+testRSL =
     runTestTT $ TestList $ c1 ++ c2 ++ p1 ++ p2
