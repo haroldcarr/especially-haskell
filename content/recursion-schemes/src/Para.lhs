@@ -46,6 +46,7 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 -- (&&&) :: (b -> c) -> (b -> d) -> (b -> (c, d))
 
 ------------------------------------------------------------------------------
+usage
 
 - factorial : classic example of primitive recursion
 - usual `fact n = foldr (*) [1..n]` is unfold followed by fold
@@ -97,6 +98,14 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 >      (natpred (succ (succ (succ zero))))
 >                     (succ (succ zero))
 
+> tails :: [a] -> [[a]]
+> tails = paraL (\a as b -> (a:as):b) []
+
+> p1 :: [Test]
+> p1 = U.t "p1"
+>     (tails [1,2,3,4::Int])
+>     [[1,2,3,4],[2,3,4],[3,4],[4]]
+
 > tailL :: List a -> List a
 > tailL = para alg where
 >     alg  N           = nil
@@ -111,6 +120,9 @@ para alg = fst . cata (alg &&& Fix . fmap snd)
 example: sliding window
 -----------------------
 
+
+
+
 > sliding :: Int -> [a] -> [[a]]
 > sliding n = para alg where
 >   alg N             = []
@@ -123,6 +135,25 @@ NB. lookahead via input arg is left-to-right, but input list processed from the 
 >      [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
 
 example: slideing window 2
+
+> slide :: Int -> [a] -> [[a]]
+> slide n = paraL alg [] where
+>   alg _ [] b                     = b
+>   alg a as b | length (a:as) < n = b
+>              | otherwise         = take n (a:as) : b
+
+> slide' :: Int -> [a] -> [[a]]
+> slide' n = paraL' alg [] where
+>   alg [] b                 = b
+>   alg as b | length as < n = b
+>            | otherwise     = take n as : b
+
+> p2 :: [Test]
+> p2 = U.tt "p2"
+>     [ slide  3 [1..6::Int]
+>     , slide' 3 [1..6::Int]
+>     ]
+>     [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
 
 > sliding2 :: Int -> [a] -> [[a]]
 > sliding2 n = para alg where
@@ -142,4 +173,4 @@ NB. lookahead via input arg is left-to-right, but input list processed from the 
 
 > testPara :: IO Counts
 > testPara  =
->     runTestTT $ TestList $ fct ++ infz ++ infs ++ otfz ++ otfs ++ factEqR ++ np ++ tl ++ sl ++ sl2
+>     runTestTT $ TestList $ fct ++ factEqR ++ np ++ p1 ++ tl ++ sl ++ p2 ++ sl2

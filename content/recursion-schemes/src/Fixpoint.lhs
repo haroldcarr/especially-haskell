@@ -50,3 +50,15 @@ a type class (using `FunctionalDependencies` [FD]) to
 >   inF  = Fix
 >   outF = unFix
 
+To distinquish data/codata (useful when working with streams)
+
+> newtype Cofix f = Cofix { unCofix :: f (Cofix f) }
+
+compare to
+
+~~~{.haskell}
+newtype Fix   f = Fix   { unFix   :: f (Fix   f) }
+~~~
+
+use in `ana` definition
+

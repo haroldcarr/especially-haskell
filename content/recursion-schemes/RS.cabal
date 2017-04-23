@@ -9,19 +9,24 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Ana
+                     , AnnF
+                     , Apo
                      , Cata
+                     , CtxF
                      , Explicit
+                     , ExprF
                      , Fixpoint
                      , Foldable
                      , Futu
+                     , Histo
                      , Hylo
                      , Intro
                      , ListF
                      , NatF
                      , Para
                      , RS
-                     , RSL
                      , RSL17
+                     , StreamF
                      , Test
                      , TreeF
                      , Zygo

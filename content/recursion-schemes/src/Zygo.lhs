@@ -1,12 +1,94 @@
+> {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+>
 > module Zygo where
+>
+> import           Cata                  (cata, cataL)
+> import           Control.Arrow         ((&&&))
+> import           Data.Bool.Extras      (bool)
+> import           Data.Foldable         (fold)
+> import           Data.Functor.Foldable (Fix(..))
+> import           Data.Map              as M (fromList)
+> import           Data.Maybe            (isJust)
+> import           Data.Monoid           (Sum (..), getSum, (<>))
+> import           ExprF
+> import           Para                  (paraL)
+> import           Test.HUnit            (Counts, Test (TestList), runTestTT)
+> import qualified Test.HUnit.Util       as U (t)
+
+------------------------------------------------------------------------------
+definition
+
+Zygomorphism
+============
+
+- asymmetric mutual iteration
+    - both a data consumer and an auxiliary function are defined
+- a generalisation of paramorphisms
+
+> zygoL :: (a -> b -> b)      -> -- folding fun 1
+>          (a -> b -> c -> c) -> -- folding fun 2 : depends on result of 1st fold
+>          b -> c             -> -- zeroes for the two folds
+>          [a]                -> -- input list
+>          c                     -- result
+> zygoL f g b0 c0 = snd . cataL (\a (b, c) -> (f a b, g a b c)) (b0, c0)
+
+Zygomorphism pattern:
+- fold that depends on result of another fold
+- fuse into one traversal
+
+On each iteration of the fold
+- f sees its  answer  from previous iteration
+- g sees both answers from previous iteration
+
+> algZygo :: Functor f =>
+>     (f     b  -> b) ->
+>     (f (a, b) -> a) ->
+>      f (a, b)       ->
+>        (a, b)
+> algZygo f g = g &&& f . fmap snd
+
+> zygo :: Functor f =>
+>         (f b -> b) -> (f (a, b) -> a) -> Fix f -> a
+> zygo f g = fst . cata (algZygo f g)
+
+------------------------------------------------------------------------------
+usage
+
+example: using evaluation to find discontinuities
+-------------------------------------------------
+
+count number of live conditionals causing discontinuities due to an arbitrary supplied environment,
+in a single traversal.
+
+`discontAlg` : one of its embedded arguments, result of evaluating current term using env
+
+> discontAlg :: ExprF (Sum Int, Maybe Int) -> Sum Int
+> discontAlg (IfNeg (t, tv) (x, xv) (y, yv))
+>   | isJust xv, isJust yv, xv == yv =  t <> x <> y
+>   | otherwise = maybe (Sum 1 <> t <> x <> y)
+>                       (bool (t <> y) (t <> x) . (<0)) tv
+> discontAlg e = fold . fmap fst $ e
+
+note: check for redundant live conditionals for which both branches evaluate to same value
+
+----
+
+> -- | number of live conditionals
+> disconts :: Env -> Expr -> Int
+> disconts env = getSum . zygo (evalAlg env) discontAlg
+
+> di = U.t "di"
+>      (disconts (M.fromList [("b",-1)]) e2)
+>      1
+
+==============================================================================
+TODO
 
  https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/src/Generics-Pointless-RecursionPatterns.html#Zygo
  http://dissertations.ub.rug.nl/faculties/science/1990/g.r.malcolm/
  above thesis: http://cgi.csc.liv.ac.uk/~grant/PS/thesis.pdf
  Refining Inductive Types http://arxiv.org/pdf/1205.2492.pdf
  Has definition, but don't understand yet: http://www.iis.sinica.edu.tw/~scm/pub/mds.pdf
-
-> import           RSL
 
 zygo : allows a directed dependency between two parallel folds.
 
@@ -59,30 +141,15 @@ Suggests fusing the two operations:
 >   snd . cataL (\x (isEven, acc) -> (not isEven, pm isEven x acc))
 >   (True, 0)
 
-Zygomorphism pattern:
-- fold that depends on result of another fold
-- fuse into one traversal
-
-> zygo :: (a -> b -> b)      -> -- folding fun 1
->         (a -> b -> c -> c) -> -- folding fun 2 : depends on result of 1st fold
->         b -> c             -> -- zeroes for the two folds
->         [a]                -> -- input list
->         c                     -- result
-> zygo f g b0 c0 = snd . cataL (\a (b, c) -> (f a b, g a b c)) (b0, c0)
-
-On each iteration of the fold
-- f sees its  answer  from previous iteration
-- g sees both answers from previous iteration
-
 plusMinus as zygomorphism
 - first  folding fun : determines even/odd
 - second folding fun : calculates total
 
 > plusMinusZ :: [Int] -> Int
-> plusMinusZ = zygo (\_ p -> not p)
->                   (\x isEven acc -> pm isEven x acc)
->                   True
->                   0
+> plusMinusZ = zygoL (\_ p -> not p)
+>                    (\x isEven acc -> pm isEven x acc)
+>                    True
+>                    0
 
 higher order function (zygo) consumes list - O(n)
 - added logic to aggregate results
@@ -118,3 +185,9 @@ zygoL' f g z e = zygo k l
 pm4 = zygoL' (\_ p -> not p) (\x isEven total -> if isEven
                                                  then x - total
                                                  else x + total) True 0
+
+------------------------------------------------------------------------------
+
+> testZygo :: IO Counts
+> testZygo  =
+>     runTestTT $ TestList {- $ -} di

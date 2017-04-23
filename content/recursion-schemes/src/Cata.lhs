@@ -42,6 +42,15 @@ cata alg = alg . fmap (cata alg) . unFix
 > cata alg = alg . fmap (cata alg) . outF
 
 ------------------------------------------------------------------------------
+usage
+
+> c1 = U.t "c2"
+>     (cataL (+) 0 [1,2,3::Int])
+>     6
+
+> c2 = U.t "c1"
+>     (cataL ((:) . (+1)) [] [1,2,3::Int])
+>     [2,3,4]
 
 > natToInt :: Nat -> Int
 > natToInt = cata alg where
@@ -113,4 +122,4 @@ instance Functor (ListF a) where
 
 > testCata :: IO Counts
 > testCata  =
->     runTestTT $ TestList $ ni ++ ni2 ++ fi
+>     runTestTT $ TestList $ c1 ++ c2 ++ ni ++ ni2 ++ fi

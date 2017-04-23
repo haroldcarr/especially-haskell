@@ -1,5 +1,8 @@
-NEXT: RS : Apomorphisms
-Then transfer material from RSL, etc to individual files
+NEXT: Then transfer material from RSL, etc to individual files
+NEXT: Then sync RSL17 with individual files
+THEN: RS : ADVANCED
+
+http://stackoverflow.com/questions/36851766/list-only-version-of-zygomorphism-and-futumorphism-recursion-schemes
 
 ------------------------------------------------------------------------------
 

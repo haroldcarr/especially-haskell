@@ -67,4 +67,4 @@ smart constructors
 
 > testNatF :: IO Counts
 > testNatF  =
->     runTestTT $ TestList $ ifi ++ ofi ++ sc
+>     runTestTT $ TestList $ infz ++ infs ++ otfz ++ otfs ++ ifi ++ ofi ++ sc

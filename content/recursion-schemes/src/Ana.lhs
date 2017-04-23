@@ -8,10 +8,12 @@
 >
 > import           Control.Arrow         (second)
 > import           Data.Functor.Foldable (Fix(..))
+> import           Fixpoint
 > import           NatF
+> import           Prelude hiding        (replicate)
+> import           StreamF
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util       as U (t)
-> import           Prelude hiding        (replicate)
 
 ------------------------------------------------------------------------------
 definition
@@ -70,17 +72,7 @@ cata :: Functor f => (f a -> a) -> Fix f -> a
 cata alg  = alg . fmap (cata alg)  . unFix
 ~~~
 
-To distinquish data/codata (useful when working with streams)
-
-> newtype Cofix f = Cofix { unCofix :: f (Cofix f) }
-
-compare to
-
-~~~{.haskell}
-newtype Fix   f = Fix   { unFix   :: f (Fix   f) }
-~~~
-
-use in `ana` definition
+-- rewrite using Cofix
 
 > -- | an alternative anamorphism typed for codata
 > ana' :: Functor f => (a -> f a) -> a -> Cofix f
@@ -146,30 +138,6 @@ recursion is not part of the semantics
 -------------------------
 
 example: coinductive streams
-----------------------------
-
-> -- like `List` but no base case (i.e., Nil)
-> data StreamF a r = S a r deriving (Functor, Show)
-> type Stream a = Cofix (StreamF a)
-
-~~~{.haskell}
--- derived
-instance Functor (StreamF a) where
-  fmap f (S x xs) = S x (f xs)
-~~~
-
-constructor/deconstructors:
-
-> consS :: a -> Cofix (StreamF a) -> Cofix (StreamF a)
-> consS x xs = Cofix (S x xs)
-
-> headS :: Cofix (StreamF a) -> a
-> headS (unCofix -> (S x _ )) = x
-
-> tailS :: Cofix (StreamF a) -> Cofix (StreamF a)
-> tailS (unCofix -> (S _ xs)) = xs
-
-----
 
 > -- generates infinite stream
 > iterateS :: (a -> a) -> a -> Stream a
