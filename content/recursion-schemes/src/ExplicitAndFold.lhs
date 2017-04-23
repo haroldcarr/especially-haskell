@@ -1,6 +1,6 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 >
-> module Explicit where
+> module ExplicitAndFold where
 
 Explicit Recursion
 ==================
@@ -15,10 +15,9 @@ note the pattern
 
 same recursive structure, except
 
-- `0` or `True`
-    - for base case (i.e., empty list)
-- `+` or `&&`
-    - for operator in inductive case
+- `0` or `True` : base case (i.e., empty list)
+- `+` or `&&`   : operator in inductive case
+
 
 factor recursion out of functions with `fold`
 ============================================

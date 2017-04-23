@@ -1,4 +1,5 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+> {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 >
 > module Cata where
 >
@@ -11,14 +12,19 @@
 > import qualified Test.HUnit.Util       as U (t, tt)
 
 ------------------------------------------------------------------------------
+ http://www.cantab.net/users/antoni.diller/haskell/units/unit06.html
 
-Catamorphisms
-=============
+------------------------------------------------------------------------------
+definition
+
+\textbf{catamorphisms}
+----------------------
 
 *cata* meaning *downwards* : generalized fold
 
 - models (internal) *iteration*
-- inductive recursion : each recursive step consumes one or more constructors
+- inductive recursion
+    - each recursive step consumes one or more constructors
 - ensures terminates (if given finite input)
 
 ----
@@ -44,13 +50,19 @@ cata alg = alg . fmap (cata alg) . unFix
 ------------------------------------------------------------------------------
 usage
 
-> c1 = U.t "c2"
->     (cataL (+) 0 [1,2,3::Int])
+> c1 = U.t "c1"
+>     (cataL (+) 0 [1,2,3])
 >     6
 
-> c2 = U.t "c1"
->     (cataL ((:) . (+1)) [] [1,2,3::Int])
+> c2 = U.t "c2"
+>     (cataL ((:) . (+1)) [] [1,2,3])
 >     [2,3,4]
+
+> c3 = U.t "c3"
+>      (cataL ((++) . show)
+>             ""
+>             [1,2,3])
+>      "123"
 
 > natToInt :: Nat -> Int
 > natToInt = cata alg where
@@ -101,8 +113,25 @@ instance Functor NatF where
 
 ----
 
-> filterL :: (a -> Bool) -> List a -> List a
-> filterL p = cata alg where
+> filterL  :: (a -> Bool) -> [a] -> [a]
+> filterL p  =
+>   cataL (\x acc -> if p x then x : acc
+>                           else acc)
+>         []
+
+> filterL' :: (a -> Bool) -> [a] -> [a]
+> filterL' p =
+>   cataL (\x -> if p x then (x :) else id)
+>         []
+
+> filterL'' :: (a -> Bool) -> [a] -> [a]
+> filterL'' p = cataL alg [] where
+>   alg x | p x       = (x :)
+>         | otherwise = id
+
+
+> filterList :: (a -> Bool) -> List a -> List a
+> filterList p = cata alg where
 >     alg  N                   = nil
 >     alg (C x xs) | p x       = cons x xs
 >                  | otherwise = xs
@@ -114,12 +143,18 @@ instance Functor (ListF a) where
   fmap f (C x xs) = C x (f xs)
 ~~~
 
-> fi = U.t "fi"
->      (filterL even (cons 1 (cons (2::Int) nil)))
->                            (cons  2       nil)
+> fl = U.tt "fl" [ (filterL   odd [1,2,3])
+>                , (filterL'  odd [1,2,3])
+>                , (filterL'' odd [1,2,3])
+>                ]
+>                [1,3]
+
+> fL = U.t "fL"
+>      (filterList even (cons 1 (cons 2 nil)))
+>                               (cons 2 nil)
 
 ------------------------------------------------------------------------------
 
 > testCata :: IO Counts
 > testCata  =
->     runTestTT $ TestList $ c1 ++ c2 ++ ni ++ ni2 ++ fi
+>     runTestTT $ TestList $ c1 ++ c2 ++ c3 ++ ni ++ ni2 ++ fl ++ fL

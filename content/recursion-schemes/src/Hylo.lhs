@@ -1,3 +1,4 @@
+> {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 >
 > module Hylo where
@@ -6,14 +7,14 @@
 > import           Cata
 > import           Data.List.Ordered     as O (merge)
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
-> import qualified Test.HUnit.Util       as U (t)
+> import qualified Test.HUnit.Util       as U (t, tt)
 > import           TreeF
 
 -- Recursion Patterns as Hylomorphisms
 -- http://www4.di.uminho.pt/~mac/Publications/DI-PURe-031101.pdf
 
-Hylomorphism
-============
+\textbf{hylomorphism}
+---------------------
 
 composition of catamorphism and anamorphism
 
@@ -23,19 +24,50 @@ composition of catamorphism and anamorphism
 - enables replacing any recursive control structure with a data structure
 - a representation enables exploiting parallelism
 
-> hyloL :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
-> hyloL f z g = cataL f z . anaL' g
-
-> -- fusion/deforestation
-> hyloL':: (a -> c -> c) -> c -> (c -> Maybe (a, c)) -> c
-> hyloL' f z g = case g z of
->   Nothing     -> z
->   Just (x,z') -> f x (hyloL' f z' g)
-
 > hylo :: Functor f => (f b -> b) -> (a -> f a) -> a -> b
 > hylo g h = cata g . ana h
 
+> hyloL :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
+> hyloL f z g = cataL f z . anaL' g
+
+> -- http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=E89BCC875D547D6834D81B90093B4EC3?doi=10.1.1.51.3315&rep=rep1&type=pdf
+> -- fusion/deforestation
+> hyloL':: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
+> hyloL' f a g = h where
+>   h b = case g b of
+>     Nothing       -> a
+>     Just (a', b') -> f a' (h b')
+
+> hyloL'' :: ([b] -> b) -> (a -> [a]) -> a -> b
+> hyloL'' f g = f . map (hyloL'' f g) . g
+
 NB. termination not guaranteed
+
+----
+
+> fact h n0 = h c 1 a n0 where
+>   a 0 = Nothing
+>   a n = (Just (n, n - 1))
+>   c   = (*)
+
+> hf = U.tt "hf"
+>      [ (fact hyloL  5)
+>      , (fact hyloL' 5)
+>      ]
+>      120
+
+----
+
+> hl :: (Integral a) => [a] -> [(a, a)]
+> hl b = hyloL f [] g b
+>  where
+>   g      []   = Nothing
+>   g  (x:xs)   = Just ((x,x*2), xs)
+>   f a@(l,_) c = if even l then a : c else c
+
+> hle = U.t "hle"
+>       (hl [1,2,3,4,5])
+>       [(2,4),(4,8)]
 
 ----
 
@@ -89,7 +121,7 @@ note the fusion
 ----
 
 > mst = U.t "mst"
->       (mergeSort [7,6,3,1,5,4,2::Int])
+>       (mergeSort [7,6,3,1,5,4,2])
 >       [1,2,3,4,5,6,7]
 
 \begin{picture}(0,0)(0,0)
@@ -103,4 +135,4 @@ note the fusion
 
 > testHylo :: IO Counts
 > testHylo  =
->     runTestTT $ TestList {- $  -} mst
+>     runTestTT $ TestList $ hle ++ hf ++ mst

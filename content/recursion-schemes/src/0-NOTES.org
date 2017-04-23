@@ -1,9 +1,13 @@
-NEXT: Then transfer material from RSL, etc to individual files
-NEXT: Then sync RSL17 with individual files
+NEXT: RSL17 PARA syncing with individual files
 THEN: RS : ADVANCED
+
+Sorting morphisms, Lex Augusteijn
+http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=E89BCC875D547D6834D81B90093B4EC3?doi=10.1.1.51.3315&rep=rep1&type=pdf
 
 http://stackoverflow.com/questions/36851766/list-only-version-of-zygomorphism-and-futumorphism-recursion-schemes
 
+dynamic programming
+http://codeforces.com/problemset/tags/dp?order=BY_SOLVED_DESC
 ------------------------------------------------------------------------------
 
 Prelude> let xs = map show [1..5]

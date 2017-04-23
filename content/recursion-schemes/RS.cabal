@@ -13,7 +13,7 @@ library
                      , Apo
                      , Cata
                      , CtxF
-                     , Explicit
+                     , ExplicitAndFold
                      , ExprF
                      , Fixpoint
                      , Foldable

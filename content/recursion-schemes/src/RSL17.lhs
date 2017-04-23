@@ -7,38 +7,52 @@ Refactoring Recursion
 
 \end{center}
 
-Introduction
-============
+----
+
+\textbf{introduction}
+---------------------
 
 - Recursion is a pattern
 - There are different patterns of recursion
 - "factoring" recursion : benefits
     - code/idea reuse
-    - identify/exploit parallelism
-    - communicate/reason about programs
+    - use "proven loops" --- less bugs
     - use catalogue of theorems to optimise/prove properties
 
-Overview
-========
+----
+
+\textbf{overview}
+-----------------
 
 - explicit recursive functions
 - factor recursion out of functions with `fold`
-- use "library" functions to recursivly operate on recursive data
-    - "folds" (aka "catamorphism")
-    - "unfolds" (aka "anamorphism")
+- use library functions to operate lists
+    - folds (aka "catamorphism")
+    - unfolds (aka "anamorphism")
     - unfolds followed by folds (aka "hylomorphism")
-- conclusion
-
-- not covered
-    - other recursion schemes
-    - explicit recursive data
-    - factor recursion out of recursive data with `Fix`
+    - TODO
+- how to generalize to any recursive data
+    - `Foldable`, `Traversable`, `Fix`
 
 ----
+
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.5}
+
+\begin{tabular}{ l l p{6cm} }
+\textbf{recursion} / \textbf{data}  &      & \textbf{corecursion} / \textbf{codata} \\
+\hline
+cata            &      & ana \\
+                & hylo &  \\
+para (cata++)   &      & apo (ana++) \\
+histo           &      & futu \\
+zygo (para gen) &      &  \\
+\end{tabular}
 
 \iffalse
 
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+> {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 >
 > {-# LANGUAGE DeriveFoldable         #-}
 > {-# LANGUAGE DeriveFunctor          #-}
@@ -70,10 +84,10 @@ Overview
 
 \fi
 
-> -- TODO : without this, pandoc/pdf conversion complains
+----
 
-Explicit Recursion
-==================
+\textbf{explicit recursion}
+---------------------------
 
 note the pattern
 
@@ -88,8 +102,10 @@ same recursive structure, except
 - `0` or `True` : base case (i.e., empty list)
 - `+` or `&&`   : operator in inductive case
 
-factor recursion out of functions with `fold`
-============================================
+----
+
+\textbf{factor recursion out of functions with `fold`}
+------------------------------------------------------
 
 \iffalse
 
@@ -146,7 +162,7 @@ lengthFL       = foldl' (const . P.succ) 0
 
 ----
 
-`foldr` execution
+\textbf{`foldr` operation}
 
 ~~~{.haskell}
 foldr :: (a -> b -> b) -> b -> [a] -> b
@@ -165,48 +181,56 @@ foldr f z (x:xs) = f x (foldr f z xs)
     3   0                 True  True                _    0
 ~~~
 
-recusion as library functions
-=============================
+----
+
+\textbf{recusion as library functions}
+--------------------------------------
 
 \begin{tabular}{ l l p{6cm} }
 {\tt cata}  &    catamorphism  & folds \\
 {\tt ana}   &    anamorphisms  & unfolds \\
-{\tt hylo}  &    hylomorphism  & {\tt ana} then {\tt cata} (corecursive production followed by recursive consumption) \\
-.           &    .             & .   \\
-.           &    .             & .   \\
-.           &    .             & .   \\
+{\tt hylo}  &    hylomorphism  & {\tt ana} then {\tt cata} \\
+            &                  & (corecursive production followed by recursive consumption) \\
 \end{tabular}
 
 
+----
 
-Catamorphisms
-=============
+\textbf{catamorphisms}
+----------------------
 
-*cata* meaning *downwards* : generalized fold
+*cata* meaning *downwards* : aka `fold`
 
-- models (internal) *iteration*
-- inductive recursion : each recursive step consumes one or more constructors
+- models *iteration*
+- inductive recursion
+    - each recursive step consumes one or more constructors
 - ensures terminates (if given finite input)
 
 ----
 
-> cataL :: (a ->        b -> b) -> b -> [a] -> b
-> cataL f b (a : as) = f a    (cataL f b as)
+> cataL :: (a -> b -> b) -> b -> [a] -> b
+> cataL f b (a : as) = f a (cataL f b as)
 > cataL _ b      []  = b
 
-> c1 = U.t "c1" (cataL ((++) . show) "" [1,2,3::Int])
->               "123"
+> c1 = U.t "c1"
+>     (cataL (+) 0 [1,2,3])
+>     6
 
 ----
 
 > filterL  :: (a -> Bool) -> [a] -> [a]
-> filterL p  = cataL (\x acc -> if p x then x : acc else acc) []
+> filterL p  =
+>   cataL (\x acc -> if p x then x : acc
+>                           else acc)
+>         []
 
 > filterL' :: (a -> Bool) -> [a] -> [a]
-> filterL' p = cataL (\x -> if p x then (x :) else id) []
+> filterL' p = cataL alg [] where
+>   alg x | p x       = (x :)
+>         | otherwise = id
 
-> c2 = U.tt "c2" [ (filterL  odd [1,2,3::Int])
->                , (filterL' odd [1,2,3::Int])
+> c2 = U.tt "c2" [ (filterL  odd [1,2,3])
+>                , (filterL' odd [1,2,3])
 >                ]
 >                [1,3]
 
@@ -220,57 +244,47 @@ other examples:
 
 ------------------------------------------------------------------------------
 
-Anamorphisms
-============
+\textbf{anamorphisms}
+---------------------
 
-*ana* meaning *upwards* : generalized unfold
+*ana* meaning *upwards* : aka `unfold`
 
 - corecursive dual of catamorphisms
-- produces streams and other regular structures from a seed
-- `ana` for lists is `unfoldr` (`ViewPatterns` help see the duality)
+- produces structures from a seed
+- corecursion produces (infinite?) *codata*
+- recursion consumes (finite) *data*
 
-Corecursion
+> anaL  :: (b ->       (a, b)) -> b -> [a]
+> anaL  f b = let (a, b') = f b in a:anaL f b'
 
-- co-inductive co-recursion : each recursive step guarded by a constructor
-- although result can be infinite, each step (a constructor) is produced in finite time (i.e., makes progress)
-
-> anaL  :: (b ->       (a, b))               -> b -> [a]
-> anaL  f b = let (a, b') = f b in a : anaL f b'
-
-> anaL' :: (b -> Maybe (a, b))               -> b -> [a]
+> anaL' :: (b -> Maybe (a, b)) -> b -> [a]
 > anaL' f b = case f b of
->    Just (a, b') -> a : anaL' f b'
->    Nothing      -> []
-
-> unfoldr :: (b -> Maybe (a, b)) ->  b -> [a]
-> unfoldr f (f -> Nothing)                   = []
-> unfoldr f (f -> Just (x, unfoldr f -> xs)) = x : xs
-
-\iffalse
-
-> unfoldr _ _ = matchAll "unfoldr"
-
-\fi
-
-~~~{.haskell}
-foldrP  :: (Maybe (a, b) -> b) -> [a] -> b
-foldrP f []     = f Nothing
-foldrP f (x:xs) = f (Just (x, foldrP f xs))
-~~~
+>               Just (a, b') ->   a:anaL' f b'
+>               Nothing      -> []
 
 ----
 
 > replicate :: Int -> a -> [a]
-> replicate n0 x = unfoldr c n0 where
->     c 0 = Nothing
->     c n = Just (x, n-1)
+> replicate n0 x = anaL' c n0 where
+>   c 0 = Nothing
+>   c n = Just (x, n-1)
 
 > rep = U.t "rep" (replicate 4 '*') "****"
 
+----
+
+> fibs :: [Integer]
+> fibs = anaL' (\(a,b) -> Just (a,(b,a+b)))
+>              (0,1)
+
+> fib = U.t "tf" (fibs !! 7) 13
+
+----
+
 > linesBy :: (t -> Bool) -> [t] -> [[t]]
-> linesBy p = unfoldr c where
->     c []  = Nothing
->     c xs  = Just $ second (drop 1) $ break p xs
+> linesBy p = anaL' c where
+>   c []  = Nothing
+>   c xs  = Just $ second (drop 1) $ break p xs
 
 > lb = U.t "lb"
 >      (linesBy (==',') "foo,bar,baz")
@@ -281,34 +295,25 @@ foldrP f (x:xs) = f (Just (x, foldrP f xs))
 example: merging lists
 ----------------------
 
-given two sorted lists, `mergeLists` merges them into one sorted list
+given 2 sorted, produce 1 sorted list
+
+\small
 
 > mergeLists :: forall a. Ord a => [a] -> [a] -> [a]
-> mergeLists = curry $ unfoldr c where
->   c :: ([a], [a]) -> Maybe (a, ([a], [a]))
->   c ([]  ,   [])          = Nothing
->   c ([]  , y:ys)          = Just (y, (  [],   ys))
+> mergeLists = curry $ anaL' c where
+>   c :: Ord a => ([a], [a]) -> Maybe (a, ([a], [a]))
+>   c (  [],   [])          = Nothing
+>   c (  [], y:ys)          = Just (y, (  [],   ys))
 >   c (x:xs,   [])          = Just (x, (  xs,   []))
 >   c (x:xs, y:ys) | x <= y = Just (x, (  xs, y:ys))
 >                  | x >  y = Just (y, (x:xs,   ys))
 >   c (_:_ , _:_)           = matchAll "mergeLists"
 
 > ml = U.t "ml"
->      (mergeLists [1,4] [2,3,5::Int])
+>      (mergeLists [1,4] [2,3,5])
 >      [1,2,3,4,5]
 
-----
-
-Corecursion
------------
-
-anamorphism is *corecursive*
-
-- dual of catamorphisms / recursion
-
-corecursion produces (potentially infinite) *codata*
-
-recursion consumes (necessarily finite) *data*
+\normalsize
 
 ----
 
@@ -326,6 +331,8 @@ example: coinductive streams
 > s1s :: [Integer]
 > s1s = iterateS (id) 1
 
+----
+
 > takeS :: Int -> [a] -> [a]
 > takeS 0     _  = []
 > takeS _    []  = []
@@ -335,39 +342,47 @@ example: coinductive streams
 >       (takeS 6 sFrom1)
 >       [1,2,3,4,5,6]
 
-> tss = U.t "tss"
->       (takeS 6 s1s)
->       [1,1,1,1,1,1]
-
-
 ------------------------------------------------------------------------------
 
-hylomorphism
-============
+\textbf{hylomorphism}
+---------------------
 
-> hyloL :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
+composition of catamorphism and anamorphism
+
+- corecursive codata production
+- followed by recursive data consumption
+
+> hyloL :: (a -> c -> c)       -> c
+>       -> (b -> Maybe (a, b)) -> b
+>       -> c
 > hyloL f z g = cataL f z . anaL' g
 
-> -- fusion/deforestation
-> hyloL':: (a -> c -> c) -> c -> (c -> Maybe (a, c)) -> c
-> hyloL' f z g = case g z of
->   Nothing     -> z
->   Just (x,z') -> f x (hyloL' f z' g)
+----
 
-> hl :: (Integral a, Show a) => [a] -> [(a, a)]
-> hl b = hyloL f [] g b
->  where
->   g      []   = Nothing
->   g  (x:xs)   = Just ((x,x*2), xs)
->   f a@(l,_) c = if even l then a : c else c
+> fact :: Integer -> Integer
+> fact n0 = hyloL' c 1 a n0 where
+>   a 0 = Nothing
+>   a n = (Just (n, n - 1))
+>   c   = (*)
 
-> hle = U.t "hle"
->       (hl [1,2,3,4,5::Int])
->       [(2,4),(4,8)]
+> hf = U.t "hf" (fact 5) 120
+
+----
+
+\textbf{fusion/deforestation}
+
+~~~{.haskell}
+hyloL f z g = cataL f z . anaL' g
+~~~
+
+> hyloL' f a g = h where
+>   h b = case g b of
+>     Nothing       -> a
+>     Just (a', b') -> f a' (h b')
 
 ------------------------------------------------------------------------------
 
-Paramorphisms
+Paramorphism
 =============
 
 *para* meaning *beside* : extension of catamorphism
@@ -388,7 +403,7 @@ Paramorphisms
 
 > p1 :: [Test]
 > p1 = U.t "p1"
->      (tails [1,2,3,4::Int])
+>      (tails [1,2,3,4])
 >      [[2,3,4],[3,4],[4],[]]
 
 
@@ -405,7 +420,7 @@ sliding n = para alg where
 NB. lookahead via input arg is left-to-right, but input list processed from the right
 
 sl = U.t "sl"
-     (sliding 3 [1..5::Int])
+     (sliding 3 [1..5])
      [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
 
 > slide' :: Int -> [a] -> [[a]]
@@ -425,15 +440,15 @@ sliding2 n = para alg where
 NB. lookahead via input arg is left-to-right, but input list processed from the right
 
 sl2 = U.t "sl2"
-      (sliding2 3 [1..5::Int])
+      (sliding2 3 [1..5])
       [[1,2,3],[2,3,4],[3,4,5]]
 
  http://stackoverflow.com/a/13317563/814846
 
 > p2 :: [Test]
 > p2 = U.tt "p2"
->      [ slide  3 [1..6::Int]
->      , slide' 3 [1..6::Int]
+>      [ slide  3 [1..6]
+>      , slide' 3 [1..6]
 >      ]
 >      [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
 
@@ -456,7 +471,7 @@ apomorphism
 
 > ae :: [Test]
 > ae = U.t "ae"
->      (ap [1,3,5,7,9::Int])
+>      (ap [1,3,5,7,9])
 >      [10,30,5,7,9]
 
 ------------------------------------------------------------------------------
@@ -465,8 +480,8 @@ apomorphism
 
 > testRSL17 :: IO Counts
 > testRSL17 =
->   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ lb ++ ml ++ tsf ++ tss ++
->                          hle ++ p1 ++ p2 ++ ae
+>   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++
+>                          p1 ++ p2 ++ ae
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")

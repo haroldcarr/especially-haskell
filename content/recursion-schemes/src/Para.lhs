@@ -11,7 +11,7 @@
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util       as U (t, tt)
 
-Paramorphisms
+Paramorphism
 =============
 
 *para* meaning *beside* : extension of catamorphism

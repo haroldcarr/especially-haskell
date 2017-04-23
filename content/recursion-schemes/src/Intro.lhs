@@ -1,23 +1,25 @@
 > module Intro where
 
-Introduction
-============
+\textbf{introduction}
+---------------------
 
 - Recursion is a pattern
 - There are different patterns of recursion
 - "factoring" recursion : benefits
     - communicate/reason about programs
     - code/idea reuse
+    - use "proven loops" --- less bugs
     - use a catalogue of theorems to optimise or prove properties
     - identify/exploit parallelism
 
-Overview
-========
+\textbf{overview}
+-----------------
 
 - explicit recursive functions
 - factor recursion out of functions with `fold`
 - explicit recursive data
-- factor recursion out of data with `Fix`
+- factor recursion out of data
+    - `Foldable`, `Traversable`, `Fix`
 - use "library" functions to recursivly operate on "fixed" data
     - generic "folds" (aka "catamorphism")
     - generic "unfolds" (aka "anamorphism")
@@ -41,9 +43,22 @@ para        apo
 histo       futu
 zygo
 
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.5}
 
-OTHER RECURSION SCHEMES
-=======================
+\begin{tabular}{ l l p{6cm} }
+\textbf{recursion} / \textbf{data}  &      & \textbf{corecursion} / \textbf{codata} \\
+\hline
+cata            &      & ana \\
+                & hylo &  \\
+para (cata++)   &      & apo (ana++) \\
+histo           &      & futu \\
+zygo (para gen) &      &  \\
+\end{tabular}
+
+
+\textbf{other recursion schemes}
+--------------------------------
 
 \begin{tabular}{ l l p{6cm} }
 `para`  &    paramorphism  & folds with access to input arg corresponding to most recent state of computation \\

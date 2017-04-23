@@ -13,36 +13,32 @@
 > import           Prelude hiding        (replicate)
 > import           StreamF
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
-> import qualified Test.HUnit.Util       as U (t)
+> import qualified Test.HUnit.Util       as U (t, tt)
 
 ------------------------------------------------------------------------------
 definition
 
-Anamorphisms
-============
+\textbf{anamorphisms}
+---------------------
 
 *ana* meaning *upwards* : generalized unfold
 
 - corecursive dual of catamorphisms
-- co-inductive co-recursion : each recursive step guarded by a constructor
 - produces streams and other regular structures from a seed
-- although result can be infinite, each step (a constructor) is produced in finite time (i.e., makes progress)
-
-Corecursion
------------
-
-- anamorphism is *corecursive*
 - dual of catamorphisms / recursion
 - corecursion produces (potentially infinite) *codata*
 - recursion consumes (necessarily finite) *data*
+- co-inductive co-recursion : each recursive step guarded by a constructor
+- although result can be infinite, each step (a constructor) is produced in finite time (i.e., makes progress)
+
 
 > anaL  :: (b ->       (a, b))               -> b -> [a]
-> anaL  f b = let (a, b') = f b in a : anaL f b'
+> anaL  f b = let (a, b') = f b in a:anaL f b'
 
 > anaL' :: (b -> Maybe (a, b))               -> b -> [a]
 > anaL' f b = case f b of
->   Just (a, b') -> a : anaL' f b'
->   Nothing      -> []
+>               Just (a, b') ->   a:anaL' f b'
+>               Nothing      -> []
 
 - `ana` for lists is `unfoldr` (`ViewPatterns` help see the duality)
 
@@ -82,18 +78,26 @@ cata alg  = alg . fmap (cata alg)  . unFix
 usage
 
 > replicate :: Int -> a -> [a]
-> replicate n0 x = unfoldr c n0 where
->     c 0 = Nothing
->     c n = Just (x, n-1)
+> replicate n0 x = anaL' c n0 where
+>   c 0 = Nothing
+>   c n = Just (x, n-1)
 
 > rep = U.t "rep" (replicate 4 '*') "****"
 
 -------------------------
 
+> fibs :: [Integer]
+> fibs = anaL' (\(a,b) -> Just (a,(b,a+b)))
+>              (0,1)
+
+> fib = U.t "tf" (fibs !! 7) 13
+
+-------------------------
+
 > linesBy :: (t -> Bool) -> [t] -> [[t]]
-> linesBy p = unfoldr c where
->     c []  = Nothing
->     c xs  = Just $ second (drop 1) $ break p xs
+> linesBy p = anaL' c where
+>   c []  = Nothing
+>   c xs  = Just $ second (drop 1) $ break p xs
 
 > lb = U.t "lb"
 >      (linesBy (==',') "foo,bar,baz")
@@ -104,21 +108,25 @@ usage
 example: merging lists
 ----------------------
 
-given two sorted lists, `mergeLists` merges them into one sorted list
+given 2 sorted, produce 1 sorted list
+
+\small
 
 > mergeLists :: forall a. Ord a => [a] -> [a] -> [a]
 > mergeLists = curry $ unfoldr c where
 >   c :: Ord a => ([a], [a]) -> Maybe (a, ([a], [a]))
->   c ([], [])              = Nothing
->   c ([], y:ys)            = Just (y, ([], ys))
->   c (x:xs, [])            = Just (x, (xs, []))
->   c (x:xs, y:ys) | x <= y = Just (x, (xs, y:ys))
->                  | x > y  = Just (y, (x:xs, ys))
+>   c (  [],   [])          = Nothing
+>   c (  [], y:ys)          = Just (y, (  [],   ys))
+>   c (x:xs,   [])          = Just (x, (  xs,   []))
+>   c (x:xs, y:ys) | x <= y = Just (x, (  xs, y:ys))
+>                  | x >  y = Just (y, (x:xs,   ys))
 >   c (_:_,_:_)             = error "mergeLists"
 
 > ml = U.t "ml"
 >      (mergeLists [1,4] [2,3,5::Int])
 >      [1,2,3,4,5]
+
+\normalsize
 
 -------------------------
 
@@ -144,19 +152,40 @@ example: coinductive streams
 > iterateS f = ana' c where
 >   c x = S x (f x)
 
+> iterateSL :: (a -> a) -> a -> [a]
+> iterateSL f = anaL c where
+>   c x = (x, f x)
+
 > s1 :: Stream Integer
 > s1 = iterateS (+1) 1
+
+> sFrom1 :: [Integer]
+> sFrom1 = iterateSL (+1) 1
+
+> s1s :: [Integer]
+> s1s = iterateSL (id) 1
 
 > takeS :: Int -> Stream a -> [a]
 > takeS 0 _                   = []
 > takeS n (unCofix -> S x xs) = x : takeS (n-1) xs
 
-> ts = U.t "ts"
->      (takeS 6 s1)
+> takeSL :: Int -> [a] -> [a]
+> takeSL 0     _  = []
+> takeSL _    []  = []
+> takeSL n (x:xs) = x : takeSL (n-1) xs
+
+> ts = U.tt "ts"
+>      [ (takeS  6 s1)
+>      , (takeSL 6 sFrom1)
+>      ]
 >      [1,2,3,4,5,6]
+
+> tss = U.t "tss"
+>       (takeSL 6 s1s)
+>       [1,1,1,1,1,1]
 
 ------------------------------------------------------------------------------
 
 > testAna :: IO Counts
 > testAna  =
->     runTestTT $ TestList $ rep ++ lb ++ ml ++ itn ++ ts
+>     runTestTT $ TestList $ rep ++ fib ++ lb ++ ml ++ itn ++ ts ++ tss
