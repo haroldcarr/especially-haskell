@@ -382,97 +382,80 @@ hyloL f z g = cataL f z . anaL' g
 
 ------------------------------------------------------------------------------
 
-Paramorphism
-=============
+\textbf{paramorphism}
+---------------------
 
-*para* meaning *beside* : extension of catamorphism
+*para* meaning *beside* (or "parallel with") : extension of catamorphism
 
-- enables access to the original input structures
-- provides access to input arg corresponding to running state of the recursion
+- given each element, and
+- current cursor in iteration (e.g., the current tail)
 
-> paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
-> paraL f b (a : as) = f a as (paraL f b as)
-> paraL _ b []       = b
+> paraL  :: (a -> [a] -> b -> b) -> b
+>        -> [a]
+>        -> b
+> paraL  f b  (a : as) = f a as (paraL f b as)
+> paraL  _ b       []  = b
 
-> paraL':: (     [a] -> b -> b) -> b -> [a] -> b
-> paraL' f b as@(_:xs) = f as (paraL' f b xs)
-> paraL' _ b []        = b
+----
 
 > tails :: [a] -> [[a]]
 > tails = paraL (\_ as b -> as:b) []
 
-> p1 :: [Test]
 > p1 = U.t "p1"
 >      (tails [1,2,3,4])
 >      [[2,3,4],[3,4],[4],[]]
 
+----
 
 > slide :: Int -> [a] -> [[a]]
 > slide n = paraL alg [] where
 >   alg _ [] b                     = b
 >   alg a as b | length (a:as) < n = b
->              | otherwise         = take n (a:as) : b
+>              | otherwise = take n (a:as) : b
 
-sliding n = para alg where
-  alg N             = []
-  alg (C x (r, xs)) = take n (x:xs) : r
-
-NB. lookahead via input arg is left-to-right, but input list processed from the right
-
-sl = U.t "sl"
-     (sliding 3 [1..5])
-     [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
-
-> slide' :: Int -> [a] -> [[a]]
-> slide' n = paraL' alg [] where
->   alg [] b                 = b
->   alg as b | length as < n = b
->            | otherwise     = take n as : b
-
-example: slideing window 2
-
-sliding2 :: Int -> [a] -> [[a]]
-sliding2 n = para alg where
-  alg N             = []
-  alg (C x (r, xs)) | length (x:xs) < n = []
-                    | otherwise         = take n (x:xs) : r
-
-NB. lookahead via input arg is left-to-right, but input list processed from the right
-
-sl2 = U.t "sl2"
-      (sliding2 3 [1..5])
-      [[1,2,3],[2,3,4],[3,4,5]]
-
- http://stackoverflow.com/a/13317563/814846
-
-> p2 :: [Test]
-> p2 = U.tt "p2"
->      [ slide  3 [1..6]
->      , slide' 3 [1..6]
->      ]
->      [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
+> sl = U.t "sl"
+>      (slide 3 [1..5])
+>      [[1,2,3],[2,3,4],[3,4,5]]
 
 ------------------------------------------------------------------------------
 
-apomorphism
-===========
+\textbf{apomorphism}
+--------------------
 
-> apoL  :: (b -> Maybe (a, b)) -> (b -> [a]) -> b -> [a]
-> apoL f h b = case f b of
->   Just (a, b') -> a : apoL f h b'
->   Nothing      -> h b
+*apo* meaning *apart*
 
-> ap :: (Num a, Ord a) => [a] -> [a]
-> ap = apoL f h
->  where
->   f    []  = Nothing
->   f (x:xs) = if x < 5 then Just (x*10,xs) else Nothing
->   h = id
+- dual of paramorphism
+- extension anamorphism
+- enables short-circuiting traversal
 
-> ae :: [Test]
-> ae = U.t "ae"
->      (ap [1,3,5,7,9])
->      [10,30,5,7,9]
+> apoL :: ([b] -> Maybe (a, Either [b] [a]))
+>      -> [b]
+>      -> [a]
+> apoL f b = case f b of
+>   Nothing           -> []
+>   Just (x, Left c)  -> x : apoL f c
+>   Just (x, Right e) -> x : e
+
+----
+
+- short-circuits to final result when `x<=y`
+
+> insertElemL :: Ord a => a -> [a] -> [a]
+> insertElemL a as = apoL c (a:as) where
+>   c      []           = Nothing
+>   c   (x:[])          = Just (x, Left     [])
+>   c (x:y:xs) | x <= y = Just (x, Right (y:xs)) -- DONE
+>              | x >  y = Just (y, Left  (x:xs))
+
+\iffalse
+
+>   c _                 = error "insertElem"
+
+\fi
+
+> iel = U.t "iel"
+>      (insertElemL 3 [1,2,5])
+>      [1,2,3,5]
 
 ------------------------------------------------------------------------------
 
@@ -480,8 +463,8 @@ apomorphism
 
 > testRSL17 :: IO Counts
 > testRSL17 =
->   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++
->                          p1 ++ p2 ++ ae
+>   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++ hf ++
+>                          p1 ++ sl ++ iel
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")

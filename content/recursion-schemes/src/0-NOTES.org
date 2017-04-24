@@ -1,10 +1,12 @@
 NEXT: RSL17 PARA syncing with individual files
 THEN: RS : ADVANCED
 
-Sorting morphisms, Lex Augusteijn
+LIST VERSIONS: "Sorting morphisms", Lex Augusteijn
 http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=E89BCC875D547D6834D81B90093B4EC3?doi=10.1.1.51.3315&rep=rep1&type=pdf
 
 http://stackoverflow.com/questions/36851766/list-only-version-of-zygomorphism-and-futumorphism-recursion-schemes
+
+https://www.andres-loeh.de/GenericStorage/wgp10-genstorage.pdf
 
 dynamic programming
 http://codeforces.com/problemset/tags/dp?order=BY_SOLVED_DESC

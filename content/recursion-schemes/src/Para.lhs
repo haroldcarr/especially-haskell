@@ -1,4 +1,5 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+> {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 >
 > {-# LANGUAGE MultiParamTypeClasses #-}
 > module Para where
@@ -11,15 +12,17 @@
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util       as U (t, tt)
 
-Paramorphism
-=============
+\textbf{paramorphism}
+---------------------
 
-*para* meaning *beside* : extension of catamorphism
+*para* meaning *beside* (or "parallel with") : extension of catamorphism
 
 - models *primitive recursion* over an inductive type
 - enables access to the original input structures
-- operates on algebra that provides access to input arg corresponding to running state of the recursion
 - provides access to input arg corresponding to running state of the recursion
+- operates on algebra that provides access to input arg corresponding to running state of the recursion
+- given each element, and
+- current cursor in iteration (e.g., the current tail)
 
 > paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
 > paraL f b (a : as) = f a as (paraL f b as)
@@ -103,7 +106,7 @@ usage
 
 > p1 :: [Test]
 > p1 = U.t "p1"
->     (tails [1,2,3,4::Int])
+>     (tails [1,2,3,4])
 >     [[1,2,3,4],[2,3,4],[3,4],[4]]
 
 > tailL :: List a -> List a
@@ -112,16 +115,13 @@ usage
 >     alg (C _ (_, l)) = l
 
 > tl = U.t "tl"
->      (tailL (cons 1 (cons (2::Int) nil)))
->                     (cons  2       nil)
+>      (tailL (cons 1 (cons 2 nil)))
+>                     (cons 2 nil)
 
 ----
 
 example: sliding window
 -----------------------
-
-
-
 
 > sliding :: Int -> [a] -> [[a]]
 > sliding n = para alg where
@@ -131,7 +131,7 @@ example: sliding window
 NB. lookahead via input arg is left-to-right, but input list processed from the right
 
 > sl = U.t "sl"
->      (sliding 3 [1..5::Int])
+>      (sliding 3 [1..5])
 >      [[1,2,3],[2,3,4],[3,4,5],[4,5],[5]]
 
 example: slideing window 2
@@ -150,8 +150,8 @@ example: slideing window 2
 
 > p2 :: [Test]
 > p2 = U.tt "p2"
->     [ slide  3 [1..6::Int]
->     , slide' 3 [1..6::Int]
+>     [ slide  3 [1..6]
+>     , slide' 3 [1..6]
 >     ]
 >     [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
 
@@ -164,7 +164,7 @@ example: slideing window 2
 NB. lookahead via input arg is left-to-right, but input list processed from the right
 
 > sl2 = U.t "sl2"
->      (sliding2 3 [1..5::Int])
+>      (sliding2 3 [1..5])
 >      [[1,2,3],[2,3,4],[3,4,5]]
 
  http://stackoverflow.com/a/13317563/814846
