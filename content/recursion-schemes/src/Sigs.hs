@@ -1,4 +1,4 @@
-modules Sigs where
+module Sigs where
 
 cataL :: (a ->        b -> b) -> b -> [a] -> b
 paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
@@ -14,5 +14,5 @@ anaL  :: (b ->       (a, b))               -> b -> [a]
 anaL' :: (b -> Maybe (a, b))               -> b -> [a]
 apoL  :: (b -> Maybe (a, b)) -> (b -> [a]) -> b -> [a]
 ------------------------------------------------------------------------------
-hyloL :: (a ->  c ->  c) ->  c -> (b  -> Maybe (a, b)) - >  b -> c
+hyloL :: (a ->  c ->  c) ->  c -> (b  -> Maybe (a, b))  ->  b -> c
 hyloL':: (t -> t1 -> t1) -> t1 -> (t1 -> Maybe (t, t1)) -> t1

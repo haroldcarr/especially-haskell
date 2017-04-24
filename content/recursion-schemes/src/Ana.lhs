@@ -1,6 +1,5 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 >
-> {-# LANGUAGE DeriveFunctor #-}
 > {-# LANGUAGE RankNTypes    #-}
 > {-# LANGUAGE ViewPatterns  #-}
 >
@@ -163,7 +162,7 @@ example: coinductive streams
 > sFrom1 = iterateSL (+1) 1
 
 > s1s :: [Integer]
-> s1s = iterateSL (id) 1
+> s1s = iterateSL id 1
 
 > takeS :: Int -> Stream a -> [a]
 > takeS 0 _                   = []
@@ -175,8 +174,8 @@ example: coinductive streams
 > takeSL n (x:xs) = x : takeSL (n-1) xs
 
 > ts = U.tt "ts"
->      [ (takeS  6 s1)
->      , (takeSL 6 sFrom1)
+>      [ takeS  6 s1
+>      , takeSL 6 sFrom1
 >      ]
 >      [1,2,3,4,5,6]
 

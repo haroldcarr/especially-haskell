@@ -11,6 +11,8 @@
 > import           Prelude               hiding (succ)
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util       as U (t, tt)
+>
+> {-# ANN factEqR "HLint: ignore"          #-}
 
 \textbf{paramorphism}
 ---------------------

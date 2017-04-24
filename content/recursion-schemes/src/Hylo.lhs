@@ -9,6 +9,8 @@
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util       as U (t, tt)
 > import           TreeF
+>
+> {-# ANN fact "HLint: ignore Eta reduce" #-}
 
 -- Recursion Patterns as Hylomorphisms
 -- http://www4.di.uminho.pt/~mac/Publications/DI-PURe-031101.pdf
@@ -47,19 +49,19 @@ NB. termination not guaranteed
 
 > fact h n0 = h c 1 a n0 where
 >   a 0 = Nothing
->   a n = (Just (n, n - 1))
+>   a n = Just (n, n - 1)
 >   c   = (*)
 
 > hf = U.tt "hf"
->      [ (fact hyloL  5)
->      , (fact hyloL' 5)
+>      [ fact hyloL  5
+>      , fact hyloL' 5
 >      ]
 >      120
 
 ----
 
 > hl :: (Integral a) => [a] -> [(a, a)]
-> hl b = hyloL f [] g b
+> hl = hyloL f [] g
 >  where
 >   g      []   = Nothing
 >   g  (x:xs)   = Just ((x,x*2), xs)

@@ -74,7 +74,7 @@ example: uses apomorphism to generate
 > insertElemL :: Ord a => a -> [a] -> [a]
 > insertElemL a as = apoL c (a:as) where
 >   c      []           = Nothing
->   c   (x:[])          = Just (x, Left     [])
+>   c     [x]           = Just (x, Left     [])
 >   c (x:y:xs) | x <= y = Just (x, Right (y:xs)) -- DONE
 >              | x >  y = Just (y, Left  (x:xs))
 >   c _                 = error "insertElem"

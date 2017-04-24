@@ -1,14 +1,13 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 >
-> {-# LANGUAGE DeriveFoldable #-}
-> {-# LANGUAGE DeriveFunctor  #-}
->
 > module Foldable where
 >
 > import           Data.Foldable         (fold)
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util       as U (t)
 > import           TreeF
+>
+> {-# ANN module "HLint: ignore Use sum"   #-}
 
 Foldable : generalize `fold` to work on other types
 ========================================

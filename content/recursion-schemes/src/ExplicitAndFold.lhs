@@ -1,6 +1,10 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 >
 > module ExplicitAndFold where
+>
+> {-# ANN module "HLint: ignore Use foldr" #-}
+> {-# ANN module "HLint: ignore Use sum"   #-}
+> {-# ANN module "HLint: ignore Use and"   #-}
 
 Explicit Recursion
 ==================

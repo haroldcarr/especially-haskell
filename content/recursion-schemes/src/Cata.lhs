@@ -143,9 +143,9 @@ instance Functor (ListF a) where
   fmap f (C x xs) = C x (f xs)
 ~~~
 
-> fl = U.tt "fl" [ (filterL   odd [1,2,3])
->                , (filterL'  odd [1,2,3])
->                , (filterL'' odd [1,2,3])
+> fl = U.tt "fl" [ filterL   odd [1,2,3]
+>                , filterL'  odd [1,2,3]
+>                , filterL'' odd [1,2,3]
 >                ]
 >                [1,3]
 

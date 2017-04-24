@@ -27,9 +27,9 @@ Refactoring Recursion
 - explicit recursive functions
 - factor recursion out of functions with `fold`
 - use library functions to operate lists
-    - folds (aka "catamorphism")
-    - unfolds (aka "anamorphism")
-    - unfolds followed by folds (aka "hylomorphism")
+    - folds : "catamorphism"
+    - unfolds : "anamorphism"
+    - unfolds followed by folds : "hylomorphism"
     - TODO
 - how to generalize to any recursive data
     - `Foldable`, `Traversable`, `Fix`
@@ -54,19 +54,14 @@ zygo (para gen) &      &  \\
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 > {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 >
-> {-# LANGUAGE DeriveFoldable         #-}
-> {-# LANGUAGE DeriveFunctor          #-}
-> {-# LANGUAGE DeriveTraversable      #-}
 > {-# LANGUAGE FlexibleContexts       #-}
 > {-# LANGUAGE FlexibleInstances      #-}
-> {-# LANGUAGE FunctionalDependencies #-}
 > {-# LANGUAGE MultiParamTypeClasses  #-}
 > {-# LANGUAGE RankNTypes             #-}
 > {-# LANGUAGE ScopedTypeVariables    #-}
 > {-# LANGUAGE TupleSections          #-}
 > {-# LANGUAGE TypeOperators          #-}
 > {-# LANGUAGE UndecidableInstances   #-}
-> {-# LANGUAGE ViewPatterns           #-}
 >
 > module RSL17 where
 >
@@ -81,6 +76,7 @@ zygo (para gen) &      &  \\
 > {-# ANN module "HLint: ignore Use foldr" #-}
 > {-# ANN module "HLint: ignore Use sum"   #-}
 > {-# ANN module "HLint: ignore Use and"   #-}
+> {-# ANN fact "HLint: ignore Eta reduce"  #-}
 
 \fi
 
@@ -229,8 +225,8 @@ foldr f z (x:xs) = f x (foldr f z xs)
 >   alg x | p x       = (x :)
 >         | otherwise = id
 
-> c2 = U.tt "c2" [ (filterL  odd [1,2,3])
->                , (filterL' odd [1,2,3])
+> c2 = U.tt "c2" [ filterL  odd [1,2,3]
+>                , filterL' odd [1,2,3]
 >                ]
 >                [1,3]
 
@@ -329,7 +325,7 @@ example: coinductive streams
 > sFrom1 = iterateS (+1) 1
 
 > s1s :: [Integer]
-> s1s = iterateS (id) 1
+> s1s = iterateS id 1
 
 ----
 
@@ -362,7 +358,7 @@ composition of catamorphism and anamorphism
 > fact :: Integer -> Integer
 > fact n0 = hyloL' c 1 a n0 where
 >   a 0 = Nothing
->   a n = (Just (n, n - 1))
+>   a n = Just (n, n - 1)
 >   c   = (*)
 
 > hf = U.t "hf" (fact 5) 120
@@ -443,7 +439,7 @@ hyloL f z g = cataL f z . anaL' g
 > insertElemL :: Ord a => a -> [a] -> [a]
 > insertElemL a as = apoL c (a:as) where
 >   c      []           = Nothing
->   c   (x:[])          = Just (x, Left     [])
+>   c     [x]           = Just (x, Left     [])
 >   c (x:y:xs) | x <= y = Just (x, Right (y:xs)) -- DONE
 >              | x >  y = Just (y, Left  (x:xs))
 
