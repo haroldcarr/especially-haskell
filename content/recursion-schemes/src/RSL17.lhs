@@ -1,9 +1,39 @@
-Refactoring Recursion
-=====================
+\iffalse
+
+> {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+> {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
+>
+> {-# LANGUAGE FlexibleContexts       #-}
+> {-# LANGUAGE FlexibleInstances      #-}
+> {-# LANGUAGE MultiParamTypeClasses  #-}
+> {-# LANGUAGE RankNTypes             #-}
+> {-# LANGUAGE ScopedTypeVariables    #-}
+> {-# LANGUAGE TupleSections          #-}
+> {-# LANGUAGE TypeOperators          #-}
+> {-# LANGUAGE UndecidableInstances   #-}
+>
+> module RSL17 where
+>
+> import           Control.Arrow         (second)
+> import           Prelude               as P hiding (replicate, succ)
+>
+> -- Third-party Hackage packages
+>
+> import           Test.HUnit                    (Counts, Test (TestList), runTestTT)
+> import qualified Test.HUnit.Util               as U (t, tt)
+>
+> {-# ANN module "HLint: ignore Use foldr" #-}
+> {-# ANN module "HLint: ignore Use sum"   #-}
+> {-# ANN module "HLint: ignore Use and"   #-}
+> {-# ANN fact "HLint: ignore Eta reduce"  #-}
+
+\fi
 
 \begin{center}
 
-\LARGE{Harold Carr}
+\textbf{\LARGE{Refactoring Recursion}}
+
+\Large{Harold Carr}
 
 \end{center}
 
@@ -48,37 +78,6 @@ para (cata++)   &      & apo (ana++) \\
 histo           &      & futu \\
 zygo (para gen) &      &  \\
 \end{tabular}
-
-\iffalse
-
-> {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
-> {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
->
-> {-# LANGUAGE FlexibleContexts       #-}
-> {-# LANGUAGE FlexibleInstances      #-}
-> {-# LANGUAGE MultiParamTypeClasses  #-}
-> {-# LANGUAGE RankNTypes             #-}
-> {-# LANGUAGE ScopedTypeVariables    #-}
-> {-# LANGUAGE TupleSections          #-}
-> {-# LANGUAGE TypeOperators          #-}
-> {-# LANGUAGE UndecidableInstances   #-}
->
-> module RSL17 where
->
-> import           Control.Arrow         (second)
-> import           Prelude               as P hiding (replicate, succ)
->
-> -- Third-party Hackage packages
->
-> import           Test.HUnit                    (Counts, Test (TestList), runTestTT)
-> import qualified Test.HUnit.Util               as U (t, tt)
->
-> {-# ANN module "HLint: ignore Use foldr" #-}
-> {-# ANN module "HLint: ignore Use sum"   #-}
-> {-# ANN module "HLint: ignore Use and"   #-}
-> {-# ANN fact "HLint: ignore Eta reduce"  #-}
-
-\fi
 
 ----
 
@@ -453,6 +452,67 @@ hyloL f z g = cataL f z . anaL' g
 >      (insertElemL 3 [1,2,5])
 >      [1,2,3,5]
 
+----
+
+\textbf{zygomorphism}
+---------------------
+
+- generalisation of paramorphism
+- fold that depends on result of another fold
+    - on each iteration of fold
+    - f sees its  answer  from previous iteration
+    - g sees both answers from previous iteration
+    - fused into one traversal
+
+\small
+
+> zygoL :: (a -> b -> b)      -- f
+>       -> (a -> b -> c -> c) -- g depends on f
+>       -> b -> c             -- zeroes
+>       -> [a]                -- input
+>       -> c                  -- result
+> zygoL f g b0 c0 =
+>   snd . cataL (\a (b, c) -> (f a b, g a b c))
+>               (b0, c0)
+
+\normalsize
+
+----
+
+> pmL :: [Int] -> [Int]
+> pmL = zygoL (\_ b -> not b)
+>             (\a b c -> pm b a c)
+>             True
+>             []
+>  where pm b a c = (if b then -a else a) : c
+
+> zpm = U.t "zpm"
+>       (pmL [1,2,3,4,5])
+>       [-1,2,-3,4,-5]
+
+----
+
+> pmL':: [Int] -> [Int]
+> pmL'= zygoL (\_ b -> b + 1)
+>             (\a b c -> pm (b`mod`3==0) a c)
+>             (-1)
+>             []
+>  where pm b a c = (if b then -a else a) : c
+
+> zpm' = U.t "zpm'"
+>        (pmL' [1,2,3,4,5,6,7])
+>        [1,2,-3,4,5,-6,7]
+
+------------------------------------------------------------------------------
+
+\textbf{histomorphism}
+----------------------
+
+------------------------------------------------------------------------------
+
+\textbf{futumorphism}
+---------------------
+
 ------------------------------------------------------------------------------
 
 \iffalse
@@ -460,7 +520,7 @@ hyloL f z g = cataL f z . anaL' g
 > testRSL17 :: IO Counts
 > testRSL17 =
 >   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++ hf ++
->                          p1 ++ sl ++ iel
+>                          p1 ++ sl ++ iel ++ zpm ++ zpm'
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")

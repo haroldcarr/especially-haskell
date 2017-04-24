@@ -1,4 +1,5 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+> {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 >
 > module Zygo where
 >
@@ -15,6 +16,13 @@
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util       as U (t)
 
+ https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/src/Generics-Pointless-RecursionPatterns.html#Zygo
+ http://dissertations.ub.rug.nl/faculties/science/1990/g.r.malcolm/
+ above thesis: http://cgi.csc.liv.ac.uk/~grant/PS/thesis.pdf
+ Refining Inductive Types http://arxiv.org/pdf/1205.2492.pdf
+ Has definition, but don't understand yet: http://www.iis.sinica.edu.tw/~scm/pub/mds.pdf
+ http://stackoverflow.com/a/36911924/814846
+
 ------------------------------------------------------------------------------
 definition
 
@@ -23,22 +31,21 @@ Zygomorphism
 
 - asymmetric mutual iteration
     - both a data consumer and an auxiliary function are defined
-- a generalisation of paramorphisms
-
-> zygoL :: (a -> b -> b)      -> -- folding fun 1
->          (a -> b -> c -> c) -> -- folding fun 2 : depends on result of 1st fold
->          b -> c             -> -- zeroes for the two folds
->          [a]                -> -- input list
->          c                     -- result
-> zygoL f g b0 c0 = snd . cataL (\a (b, c) -> (f a b, g a b c)) (b0, c0)
-
-Zygomorphism pattern:
+- generalisation of paramorphism
 - fold that depends on result of another fold
+    - on each iteration of fold
+    - f sees its  answer  from previous iteration
+    - g sees both answers from previous iteration
 - fuse into one traversal
 
-On each iteration of the fold
-- f sees its  answer  from previous iteration
-- g sees both answers from previous iteration
+> zygoL :: (a -> b -> b)      -- f
+>       -> (a -> b -> c -> c) -- g depends on f
+>       -> b -> c             -- zeroes
+>       -> [a]                -- input
+>       -> c                  -- result
+> zygoL f g b0 c0 =
+>   snd . cataL (\a (b, c) -> (f a b, g a b c))
+>               (b0, c0)
 
 > algZygo :: Functor f =>
 >     (f     b  -> b) ->
@@ -81,22 +88,8 @@ note: check for redundant live conditionals for which both branches evaluate to 
 >      (disconts (M.fromList [("b",-1)]) e2)
 >      1
 
-==============================================================================
-TODO
-
- https://hackage.haskell.org/package/pointless-haskell-0.0.9/docs/src/Generics-Pointless-RecursionPatterns.html#Zygo
- http://dissertations.ub.rug.nl/faculties/science/1990/g.r.malcolm/
- above thesis: http://cgi.csc.liv.ac.uk/~grant/PS/thesis.pdf
- Refining Inductive Types http://arxiv.org/pdf/1205.2492.pdf
- Has definition, but don't understand yet: http://www.iis.sinica.edu.tw/~scm/pub/mds.pdf
-
-zygo : allows a directed dependency between two parallel folds.
-
-http://stackoverflow.com/a/36911924/814846
-Zygomorphism
-- folds built from two semi-mutually-recursive functions.
-
-E.G.:
+------------------------------------------------------------------------------
+from stackoverflow
 
 > -- | intersperses + and - alternately through a list of numbers
 > --   plusMinus [v,w,x,y,z] = v - (w + (x - (y + z)))
@@ -109,24 +102,21 @@ E.G.:
 >   else
 >     x + plusMinusPR xs
 
-> lengthEven :: [a] -> Bool
-> lengthEven = even . length
-
-plusMinusPR : not compositional : must inspect length of whole list to + or -
+above: plusMinusPR : not compositional : must inspect length of whole list to + or -
 
 since paramorphism models primitive recursion, rewrite:
 
 > plusMinusP :: [Int] -> Int
-> plusMinusP = paraL (\x xs acc -> pm (lengthEven xs) x acc) 0
+> plusMinusP = paraL (\x xs acc -> pm (even . length $ xs) x acc) 0
 
 > pm :: Bool -> Int -> Int -> Int
 > pm b x acc = if b then x - acc else x + acc
 
 inefficient
-- lengthEven traverses whole list at each iteration of paramorphism
+- even . length traverses whole list at each iteration of paramorphism
 - O(n^2)
 
-Note : lengthEven and para can be expressed as catamorphisms
+Note : even . length and para can be expressed as catamorphisms
 
 > lengthEvenC :: [a] -> Bool
 > lengthEvenC = cataL (\_ p -> not p) True
@@ -153,6 +143,28 @@ plusMinus as zygomorphism
 
 higher order function (zygo) consumes list - O(n)
 - added logic to aggregate results
+
+> pmL :: [Int] -> [Int]
+> pmL = zygoL (\_ p -> not p)
+>             (\x isEven c -> pm' isEven x c)
+>             True
+>             []
+>  where pm' b x c = (if b then -x else x) : c
+
+> zpm = U.t "zpm"
+>       (pmL [1,2,3,4,5])
+>       [-1,2,-3,4,-5]
+
+> pmL':: [Int] -> [Int]
+> pmL'= zygoL (\_ b -> b + 1)
+>             (\a b c -> pm' (b `mod` 3 == 0) a c)
+>             (-1)
+>             []
+>  where pm' b a c = (if b then -a else a) : c
+
+> zpm' = U.t "zpm'"
+>        (pmL' [1,2,3,4,5,6,7])
+>        [1,2,-3,4,5,-6,7]
 
 ------------------------------------------------------------------------------
 
@@ -190,4 +202,4 @@ pm4 = zygoL' (\_ p -> not p) (\x isEven total -> if isEven
 
 > testZygo :: IO Counts
 > testZygo  =
->     runTestTT $ TestList {- $ -} di
+>     runTestTT $ TestList $ di ++ zpm ++ zpm'

@@ -1,4 +1,5 @@
-NEXT: RSL17 PARA syncing with individual files
+NEXT: RSL17 : Zygo, Histo, Futu syncing with individual files
+THEN: finish talk with Foldable and Fix
 THEN: RS : ADVANCED
 
 LIST VERSIONS: "Sorting morphisms", Lex Augusteijn
