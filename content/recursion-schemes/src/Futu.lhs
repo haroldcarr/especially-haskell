@@ -94,12 +94,20 @@ pairwise exchanges elements of stream
 >              (term $ S (headS xs)
 >                        (hole $ tailS $ tailS xs))
 
-> exs = U.t "exs"
->       (takeS 10 $ exch s1)
->       [2,1,4,3,6,5,8,7,10,9]
+> exs1 = U.t "exs"
+>        (takeS 10 $ exch s1)
+>        [2,1,4,3,6,5,8,7,10,9]
+
+> exs2 = U.t "exs2"
+>        (takeS 9 (Futu.exch s1))
+>        [2,1,4,3,6,5,8,7,10]
+
+> exs3 = U.t "exs3"
+>        (takeS 7 (Futu.exch s1))
+>        [2,1,4,3,6,5,8]
 
 ------------------------------------------------------------------------------
 
 > testFutu :: IO Counts
 > testFutu  =
->     runTestTT $ TestList {- $ -} exs
+>     runTestTT $ TestList $ exs1 ++ exs2 ++ exs3
