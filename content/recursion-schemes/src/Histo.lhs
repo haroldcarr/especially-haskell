@@ -51,16 +51,16 @@ from my SO
 > cataL = foldr
 
 > history :: (a -> History a b -> b) -> b -> [a] -> History a b
-> history f z = cataL (\x h -> Age x (f x h) h) (Ancient z)
+> history f b = cataL (\a h -> Age a (f a h) h) (Ancient b)
 
 -- After folding list from right to left, final result is at top of stack.
 
 > headH :: History a b -> b
-> headH (Ancient x) = x
-> headH (Age _ x _) = x
+> headH (Ancient b) = b
+> headH (Age _ b _) = b
 
 > histoL :: (a -> History a b -> b) -> b -> [a] -> b
-> histoL f z = headH . history f z
+> histoL f b = headH . history f b
 
 ------------------------------------------------------------------------------
 
