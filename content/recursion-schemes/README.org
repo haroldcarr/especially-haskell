@@ -9,11 +9,11 @@ refactoring recursion out of data
 - recursion schemes for any =Fix= type
 
 #+begin_example
-    recursion/data           corecursion/codata
-    -------------------------------------------
-     cata                     ana
-               hylo (cata . ana)
-     para (cata++)            apo (ana++)
-     histo                    futu
-     zygo (para gen)
+recursion/data       both               corecursion/codata
+----------------------------------------------------------
+cata                                    ana
+                     hylo (cata . ana)
+para (cata++)                           apo (ana++)
+histo                                   futu
+zygo/mutu (para gen)
 #+end_example
