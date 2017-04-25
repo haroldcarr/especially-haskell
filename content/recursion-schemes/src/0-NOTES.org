@@ -1,6 +1,35 @@
-NEXT: RSL17 : Zygo, Histo, Futu syncing with individual files
+NEXT: RSL17 : Histo, Futu syncing with individual files
 THEN: finish talk with Foldable and Fix
 THEN: RS : ADVANCED
+
+------------------------------------------------------------------------------
+
+* recursion
+
+catamorphism
+- Fold: breaking down layer-by-layer
+paramorphism
+- Primitive recursion: Fold with original value
+zygomorphism
+- Fold with a helper function
+histomorphism
+- Fold with previous results
+
+* corecursion
+
+anamorphism
+- Unfold: building up layer-by-layer
+apomorphism
+- Unfold with short-circuiting
+futumorphism
+- Unfold, multiple layers at a time
+
+* combination
+
+hylomorphism
+- General recursion: Build up a tree of subproblems, then tear it down
+
+------------------------------------------------------------------------------
 
 LIST VERSIONS: "Sorting morphisms", Lex Augusteijn
 http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=E89BCC875D547D6834D81B90093B4EC3?doi=10.1.1.51.3315&rep=rep1&type=pdf

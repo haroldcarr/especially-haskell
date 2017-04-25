@@ -1,4 +1,5 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+> {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 >
 > {-# LANGUAGE ViewPatterns #-}
 >
@@ -23,16 +24,43 @@ Histomorphism
 moves bottom-up annotating tree with results
 then collapses tree producing result
 
-> -- http://stackoverflow.com/a/24892711/814846
-> -- gives access to all previous values
-> histoL ::     ([a]      -> a)      -> [a] -> a
-> histoL f = head . go where
->   go [] = [f []]
->   go as = let histvals = go as in f histvals : histvals
-
 > -- | Histomorphism
 > histo :: Fixpoint f t => (f (Ann f a) -> a) -> t -> a
 > histo alg = attr . cata (ann . (id &&& alg))
+
+> -- http://stackoverflow.com/a/24892711/814846
+> -- gives access to all previous values
+> histoL' ::     ([a]      -> a)      -> [a] -> a
+> histoL' f = head . go where
+>   go [] = [f []]
+>   go as = let histvals = go as in f histvals : histvals
+
+> fibL' :: [Integer] -> Integer
+> fibL' = histoL' $ \a -> case a of
+>   (x:y:_) -> x + y
+>   _       -> 1
+
+----------
+from my SO
+
+> -- | list of pairs of things and results
+> -- with extra result at end corresponding to the []-thing.
+> -- Used to paireach layer of input list with its corresponding result.
+> data History a b = Ancient b | Age a b (History a b)
+
+> cataL = foldr
+
+> history :: (a -> History a b -> b) -> b -> [a] -> History a b
+> history f z = cataL (\x h -> Age x (f x h) h) (Ancient z)
+
+-- After folding list from right to left, final result is at top of stack.
+
+> headH :: History a b -> b
+> headH (Ancient x) = x
+> headH (Age _ x _) = x
+
+> histoL :: (a -> History a b -> b) -> b -> [a] -> b
+> histoL f z = headH . history f z
 
 ------------------------------------------------------------------------------
 
@@ -43,7 +71,7 @@ example: computing Fibonacci numbers
 > fib = histo f where
 >   f :: NatF (Ann NatF Integer) -> Integer
 >   f ZeroF                                         = 0
->   f (SuccF (unAnn -> (ZeroF,_)))                  = 1
+>   f (SuccF (unAnn -> (ZeroF                 ,_))) = 1
 >   f (SuccF (unAnn -> (SuccF (unAnn -> (_,n)),m))) = m + n
 >   f _    = error "fib"
 
