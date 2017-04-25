@@ -155,11 +155,11 @@ example: coinductive streams
 > iterateSL f = anaL c where
 >   c x = (x, f x)
 
-> s1 :: Stream Integer
-> s1 = iterateS (+1) 1
+> sFrom1 :: Stream Integer
+> sFrom1 = iterateS (+1) 1
 
-> sFrom1 :: [Integer]
-> sFrom1 = iterateSL (+1) 1
+> sFrom1L :: [Integer]
+> sFrom1L = iterateSL (+1) 1
 
 > s1s :: [Integer]
 > s1s = iterateSL id 1
@@ -174,8 +174,8 @@ example: coinductive streams
 > takeSL n (x:xs) = x : takeSL (n-1) xs
 
 > ts = U.tt "ts"
->      [ takeS  6 s1
->      , takeSL 6 sFrom1
+>      [ takeS  6 sFrom1
+>      , takeSL 6 sFrom1L
 >      ]
 >      [1,2,3,4,5,6]
 

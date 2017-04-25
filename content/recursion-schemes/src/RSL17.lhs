@@ -513,6 +513,38 @@ hyloL f z g = cataL f z . anaL' g
 \textbf{futumorphism}
 ---------------------
 
+- corecursive dual of histomorphism
+    - histo : access to previously-computed values
+    - futu  : access to future values
+
+> futuL :: (a -> Maybe (b, ([b], Maybe a)))
+>       -> a
+>       -> [b]
+> futuL f a =
+>   case f a of
+>     Nothing            -> []
+>     Just (b, (bs, ma)) -> b : (bs ++ futuBs)
+>       where futuBs = case ma of
+>               Nothing -> []
+>               Just a' -> futuL f a'
+
+----
+
+> exchL = futuL coa where
+>   coa xs = Just ( head (tail xs),
+>                   ( [head xs],
+>                     Just (tail (tail xs))
+>                   )
+>                 )
+
+> exs1 = U.t "exs"
+>        (takeS 10 $ exchL sFrom1)
+>        [2,1,4,3,6,5,8,7,10,9]
+
+> exs2 = U.t "exs2"
+>        (takeS  9 $ exchL sFrom1)
+>        [2,1,4,3,6,5,8,7,10]
+
 ------------------------------------------------------------------------------
 
 \iffalse
@@ -520,7 +552,7 @@ hyloL f z g = cataL f z . anaL' g
 > testRSL17 :: IO Counts
 > testRSL17 =
 >   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++ hf ++
->                          p1 ++ sl ++ iel ++ zpm ++ zpm'
+>                          p1 ++ sl ++ iel ++ zpm ++ zpm' ++ exs1 ++ exs2
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")
