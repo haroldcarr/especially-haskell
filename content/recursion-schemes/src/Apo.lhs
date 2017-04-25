@@ -42,10 +42,10 @@ apo coa = ana (coa ||| fmap Right . outF) . Left
 ~~~
 
 > apoL :: ([b] -> Maybe (a, Either [b] [a])) -> [b] -> [a]
-> apoL f b = case f b of
+> apoL f bs = case f bs of
 >   Nothing -> []
->   Just (x, Left c)  -> x : apoL f c
->   Just (x, Right e) -> x : e
+>   Just (a, Left  bs') -> a : apoL f bs'
+>   Just (a, Right as)  -> a : as
 
 > -- TODO : what is this?
 > -- on finite inputs, same as `anaL` but with results of `h` applied to final element appended

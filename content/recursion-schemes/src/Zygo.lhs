@@ -26,8 +26,8 @@
 ------------------------------------------------------------------------------
 definition
 
-Zygomorphism
-============
+\textbf{zygomorphism}
+---------------------
 
 - asymmetric mutual iteration
     - both a data consumer and an auxiliary function are defined

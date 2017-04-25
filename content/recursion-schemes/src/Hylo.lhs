@@ -30,7 +30,7 @@ composition of catamorphism and anamorphism
 > hylo g h = cata g . ana h
 
 > hyloL :: (a -> c -> c) -> c -> (b -> Maybe (a, b)) -> b -> c
-> hyloL f z g = cataL f z . anaL' g
+> hyloL f c g = cataL f c . anaL' g
 
 > -- http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=E89BCC875D547D6834D81B90093B4EC3?doi=10.1.1.51.3315&rep=rep1&type=pdf
 > -- fusion/deforestation

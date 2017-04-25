@@ -350,7 +350,7 @@ composition of catamorphism and anamorphism
 > hyloL :: (a -> c -> c)       -> c
 >       -> (b -> Maybe (a, b)) -> b
 >       -> c
-> hyloL f z g = cataL f z . anaL' g
+> hyloL f c g = cataL f c . anaL' g
 
 ----
 
@@ -426,10 +426,10 @@ hyloL f z g = cataL f z . anaL' g
 > apoL :: ([b] -> Maybe (a, Either [b] [a]))
 >      -> [b]
 >      -> [a]
-> apoL f b = case f b of
->   Nothing           -> []
->   Just (x, Left c)  -> x : apoL f c
->   Just (x, Right e) -> x : e
+> apoL f bs = case f bs of
+>   Nothing -> []
+>   Just (a, Left  bs') -> a : apoL f bs'
+>   Just (a, Right as)  -> a : as
 
 ----
 
