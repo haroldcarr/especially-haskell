@@ -6,28 +6,28 @@
 > module Histo where
 >
 > import           AnnF
-> import           Cata                  (cata)
+> import           Cata                  (cata, cataL)
 > import           Control.Arrow         ((&&&))
 > import           Fixpoint
 > import           ListF
 > import           NatF
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
-> import qualified Test.HUnit.Util       as U (t)
+> import qualified Test.HUnit.Util       as U (t, tt)
 
-Histomorphism
-=============
+\textbf{histomorphism}
+----------------------
 
 - REF: introduced by Uustalu & Venu in 1999 [7]
-- models *course-of-value recursion* : enables using arbitrary previously computed values
+- models *course-of-value recursion* : gives access to previously computed values
+    - moves bottom-up annotating tree with results
+    - then collapses tree producing result
 - useful for applying dynamic programming techniques to recursive structures
-
-moves bottom-up annotating tree with results
-then collapses tree producing result
 
 > -- | Histomorphism
 > histo :: Fixpoint f t => (f (Ann f a) -> a) -> t -> a
 > histo alg = attr . cata (ann . (id &&& alg))
 
+> -- TODO: is this useful?
 > -- http://stackoverflow.com/a/24892711/814846
 > -- gives access to all previous values
 > histoL' ::     ([a]      -> a)      -> [a] -> a
@@ -35,13 +35,8 @@ then collapses tree producing result
 >   go [] = [f []]
 >   go as = let histvals = go as in f histvals : histvals
 
-> fibL' :: [Integer] -> Integer
-> fibL' = histoL' $ \a -> case a of
->   (x:y:_) -> x + y
->   _       -> 1
-
 ----------
-from my SO
+from my SO question
 
 > -- | list of
 > -- Step pairs: a : input, b: result
@@ -52,8 +47,7 @@ from my SO
 >   | Step a b (History a b)
 >   deriving (Eq, Read, Show)
 
-> cataL = foldr
-
+> -- folds from right to left
 > history :: (a -> History a b -> b) -> b -> [a] -> History a b
 > history f b = cataL (\a h -> Step a (f a h) h) (Zero b)
 
@@ -65,26 +59,29 @@ from my SO
 > prevH (Step _ _ h) = h
 > prevH z            = z
 
--- After folding list from right to left, final result is at top of stack.
-
+> -- final result at top of stack
 > histoL :: (a -> History a b -> b) -> b -> [a] -> b
 > histoL f b = headH . history f b
 
 ------------------------------------------------------------------------------
 
-> thistory = U.t "thist"
+> thistory = U.t "thistory"
 >   (history (\a _ -> (show a)) "" [1,2,3])
 >   (Step 1 "1" (Step 2 "2" (Step 3 "3" (Zero ""))))
 
 example: computing Fibonacci numbers
 ------------------------------------
 
-> fibL :: Integer -> History Integer Integer
-> fibL n0 = history f 1 [3..n0] where
->   f 0 _ = 0
->   f 1 _ = 1
->   f 2 _ = 1
+> fibHL :: Integer -> History Integer Integer
+> fibHL n0 = history f 1 [3..n0] where
 >   f _ h = headH h + headH (prevH h)
+
+> tfibHL = U.t "tfibHL"
+>        (fibHL 8)
+>        (Step 3 21 (Step 4 13 (Step 5 8 (Step 6 5 (Step 7 3 (Step 8 2 (Zero 1)))))))
+
+> fibL :: Integer -> Integer
+> fibL = headH . fibHL
 
 > fib :: Integer -> Integer
 > fib = histo f where
@@ -102,9 +99,15 @@ F_n & = & F_{n-1} + F_{n-2} \\
 \end{array}
 $$
 
-> fibt = U.t "fibt"
->        (fib 100)
+> fib100 = U.tt "fib100"
+>        [ fib  100
+>        , fibL 100
+>        ]
 >        354224848179261915075
+
+> tfib = U.t "tfib"
+>        (map (\x -> (fibL x, fib x)) [2..10])
+>        [(1,1),(2,2),(3,3),(5,5),(8,8),(13,13),(21,21),(34,34),(55,55)]
 
 ----
 
@@ -121,11 +124,11 @@ The function `evens` takes every second element from the given list.
 >   alg _                      = error "evens"
 
 > ev = U.t "ev"
->      (evens [1..7::Int])
+>      (evens [1..7])
 >      [2,4,6]
 
 ------------------------------------------------------------------------------
 
 > testHisto :: IO Counts
 > testHisto  =
->     runTestTT $ TestList $ thistory ++ fibt ++ ev
+>     runTestTT $ TestList $ thistory ++ tfibHL ++ fib100 ++ tfib ++ ev

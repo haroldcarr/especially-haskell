@@ -272,7 +272,7 @@ other examples:
 > fibs = anaL' (\(a,b) -> Just (a,(b,a+b)))
 >              (0,1)
 
-> fib = U.t "tf" (fibs !! 7) 13
+> fib = U.t "fib" (fibs !! 7) 13
 
 ----
 
@@ -508,6 +508,58 @@ hyloL f z g = cataL f z . anaL' g
 \textbf{histomorphism}
 ----------------------
 
+- gives access to previously computed values
+- moves bottom-up annotating tree with results
+
+----
+
+> data History a b
+>   = Zero b | Step a b (History a b)
+>     deriving (Eq, Read, Show)
+
+> history :: (a -> History a b -> b)
+>         -> b -> [a] -> History a b
+> history f b = cataL (\a h -> Step a (f a h)h)
+>                     (Zero b)
+
+> headH (Zero   b)   = b
+> headH (Step _ b _) = b
+
+> histoL :: (a -> History a b -> b)
+>        -> b -> [a] -> b
+> histoL f b = headH . history f b
+
+----
+
+> thistory = U.t "thistory"
+>   (history (\a _ -> (show a)) "" [1,2,3])
+>   (Step 1 "1"
+>           (Step 2 "2"
+>                   (Step 3 "3"
+>                           (Zero ""))))
+
+----
+
+> prevH (Step _ _ h) = h
+> prevH z            = z
+
+----
+
+> fibHL :: Integer -> History Integer Integer
+> fibHL n0 = history f 1 [3..n0] where
+>   f _ h = headH h + headH (prevH h)
+
+> tfibHL = U.t "tfibHL"
+>   (fibHL 8)
+>   (Step 3 21
+>     (Step 4 13
+>       (Step 5 8
+>         (Step 6 5
+>           (Step 7 3
+>             (Step 8 2
+>               (Zero 1)))))))
+
+
 ------------------------------------------------------------------------------
 
 \textbf{futumorphism}
@@ -537,7 +589,7 @@ hyloL f z g = cataL f z . anaL' g
 >                   )
 >                 )
 
-> exs1 = U.t "exs"
+> exs1 = U.t "exs1"
 >        (takeS 10 $ exchL sFrom1)
 >        [2,1,4,3,6,5,8,7,10,9]
 
@@ -552,7 +604,7 @@ hyloL f z g = cataL f z . anaL' g
 > testRSL17 :: IO Counts
 > testRSL17 =
 >   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++ hf ++
->                          p1 ++ sl ++ iel ++ zpm ++ zpm' ++ exs1 ++ exs2
+>                          p1 ++ sl ++ iel ++ zpm ++ zpm' ++ thistory ++ tfibHL ++ exs1 ++ exs2
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")
