@@ -43,29 +43,48 @@ then collapses tree producing result
 ----------
 from my SO
 
-> -- | list of pairs of things and results
-> -- with extra result at end corresponding to the []-thing.
-> -- Used to paireach layer of input list with its corresponding result.
-> data History a b = Ancient b | Age a b (History a b)
+> -- | list of
+> -- Step pairs: a : input, b: result
+> -- Zero : the zero argument given to histo
+> -- Pair each step/layer of input with its result.
+> data History a b
+>   = Zero   b
+>   | Step a b (History a b)
+>   deriving (Eq, Read, Show)
 
 > cataL = foldr
 
 > history :: (a -> History a b -> b) -> b -> [a] -> History a b
-> history f b = cataL (\a h -> Age a (f a h) h) (Ancient b)
-
--- After folding list from right to left, final result is at top of stack.
+> history f b = cataL (\a h -> Step a (f a h) h) (Zero b)
 
 > headH :: History a b -> b
-> headH (Ancient b) = b
-> headH (Age _ b _) = b
+> headH (Zero   b)   = b
+> headH (Step _ b _) = b
+
+> prevH :: History a b -> History a b
+> prevH (Step _ _ h) = h
+> prevH z            = z
+
+-- After folding list from right to left, final result is at top of stack.
 
 > histoL :: (a -> History a b -> b) -> b -> [a] -> b
 > histoL f b = headH . history f b
 
 ------------------------------------------------------------------------------
 
+> thistory = U.t "thist"
+>   (history (\a _ -> (show a)) "" [1,2,3])
+>   (Step 1 "1" (Step 2 "2" (Step 3 "3" (Zero ""))))
+
 example: computing Fibonacci numbers
 ------------------------------------
+
+> fibL :: Integer -> History Integer Integer
+> fibL n0 = history f 1 [0..n0] where
+>   f 0 _ = 0
+>   f 1 _ = 1
+>   f 2 _ = 1
+>   f _ h = headH h + headH (prevH h)
 
 > fib :: Integer -> Integer
 > fib = histo f where
@@ -109,4 +128,4 @@ The function `evens` takes every second element from the given list.
 
 > testHisto :: IO Counts
 > testHisto  =
->     runTestTT $ TestList $ fibt ++ ev
+>     runTestTT $ TestList $ thistory ++ fibt ++ ev
