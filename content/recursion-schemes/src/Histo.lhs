@@ -80,6 +80,13 @@ example: computing Fibonacci numbers
 >        (fibHL 8)
 >        (Step 3 21 (Step 4 13 (Step 5 8 (Step 6 5 (Step 7 3 (Step 8 2 (Zero 1)))))))
 
+> thistoryE = U.tt "thistoryE"
+>   [ fibHL 5
+>   , history                (\_ h  -> headH h  + headH (prevH h))                1  [3..5]
+>   , cataL (\a h -> Step a ((\_ h' -> headH h' + headH (prevH h')) a h) h) (Zero 1) [3..5]
+>   ]
+>   (Step 3 5 (Step 4 3 (Step 5 2 (Zero 1))))
+
 > fibL :: Integer -> Integer
 > fibL = headH . fibHL
 
@@ -131,4 +138,4 @@ The function `evens` takes every second element from the given list.
 
 > testHisto :: IO Counts
 > testHisto  =
->     runTestTT $ TestList $ thistory ++ tfibHL ++ fib100 ++ tfib ++ ev
+>     runTestTT $ TestList $ thistory ++ tfibHL ++ thistoryE ++ fib100 ++ tfib ++ ev
