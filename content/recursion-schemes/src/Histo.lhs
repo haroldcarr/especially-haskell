@@ -82,10 +82,46 @@ example: computing Fibonacci numbers
 
 > thistoryE = U.tt "thistoryE"
 >   [ fibHL 5
->   , history                (\_ h  -> headH h  + headH (prevH h))                1  [3..5]
->   , cataL (\a h -> Step a ((\_ h' -> headH h' + headH (prevH h')) a h) h) (Zero 1) [3..5]
+>   , history  f             1  [3,4,5]
+>   ,          cataL c (Zero 1) [3,4,5]
+>   , c 3     (cataL c (Zero 1)   [4,5])
+>   , let h3 = cataL c (Zero 1)   [4,5]    in Step 3 (f 3 h3) h3
+>   , let h4 = cataL c (Zero 1)     [5]
+>         s4 = Step 4 (f 4 h4) h4           in Step 3 (f 3 s4) s4
+>   , let h5 = cataL c (Zero 1)      []
+>         s5 = Step 5 (f 5 h5) h5
+>         s4 = Step 4 (f 4 s5) s5           in Step 3 (f 3 s4) s4
+>   , let h5 = Zero 1
+>         s5 = Step 5 (f 5 h5) h5
+>         s4 = Step 4 (f 4 s5) s5           in Step 3 (f 3 s4) s4
+>   , let h5 = Zero 1
+>         s5 = Step 5 (f 5 h5) h5
+>         s4 = Step 4 (f 4 s5) s5           in Step 3 (headH s4 + headH (prevH s4)) s4
+>   , let _  = Zero 1
+>         s5 = Step 5 (f 5 (Zero 1)) (Zero 1)
+>         s4 = Step 4 (f 4 s5) s5           in Step 3 (headH s4 + headH (prevH s4)) s4
+>   , let _  = Zero 1
+>         s5 = Step 5 (headH (Zero 1) + headH (prevH (Zero 1))) (Zero 1)
+>         s4 = Step 4 (f 4 s5) s5           in Step 3 (headH s4 + headH (prevH s4)) s4
+>   , let _  = Zero 1
+>         s5 = Step 5 (            1 +                     1) (Zero 1)
+>         s4 = Step 4 (f 4 s5) s5           in Step 3 (headH s4 + headH (prevH s4)) s4
+>   , let _  = Zero 1
+>         s5 = Step 5 (            1 +                     1) (Zero 1)
+>         s4 = Step 4 (headH s5 + headH (prevH s5)) s5
+>                                           in Step 3 (headH s4 + headH (prevH s4)) s4
+>   , let _  = Zero 1
+>         s5 = Step 5 (            1 +                     1) (Zero 1)
+>         s4 = Step 4 ( 2       + headH (Zero 1))   s5
+>                                           in Step 3 (headH s4 + headH (prevH s4)) s4
+>   , let _  = Zero 1
+>         s5 = Step 5 (            1 +                     1) (Zero 1)
+>         s4 = Step 4 ( 2       + 1)                s5
+>                                           in Step 3 (       3 + 2)                s4
 >   ]
 >   (Step 3 5 (Step 4 3 (Step 5 2 (Zero 1))))
+>  where f _ h = headH h  + headH (prevH h)
+>        c a h = Step a (f a h) h
 
 > fibL :: Integer -> Integer
 > fibL = headH . fibHL
@@ -113,7 +149,7 @@ $$
 >        354224848179261915075
 
 > tfib = U.t "tfib"
->        (map (\x -> (fibL x, fib x)) [2..10])
+>        (map (fibL &&& fib) [2..10])
 >        [(1,1),(2,2),(3,3),(5,5),(8,8),(13,13),(21,21),(34,34),(55,55)]
 
 ----
