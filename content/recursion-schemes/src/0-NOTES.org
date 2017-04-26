@@ -1,4 +1,4 @@
-NEXT: RSL17 : Histo, Futu syncing with individual files
+NEXT: signatures during transitions showing duality
 THEN: finish talk with Foldable and Fix
 THEN: RS : ADVANCED
 

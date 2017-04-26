@@ -47,13 +47,29 @@ zygo
 \renewcommand{\arraystretch}{1.5}
 
 \begin{tabular}{ l l p{6cm} }
-\textbf{recursion} / \textbf{data}  &      & \textbf{corecursion} / \textbf{codata} \\
+\textbf{recursion} / \textbf{data}  & \textbf{both}     & \textbf{corecursion} / \textbf{codata} \\
 \hline
-cata            &      & ana \\
-                & hylo &  \\
-para (cata++)   &      & apo (ana++) \\
-histo           &      & futu \\
-zygo (para gen) &      &  \\
+cata                                &                   & ana \\
+                                    & hylo              & \\
+para (cata++)                       &                   & apo (ana++) \\
+histo                               &                   & futu \\
+zygo/mutu (para gen)                &                   & \\
+\end{tabular}
+
+\textbf{recusion as library functions}
+--------------------------------------
+
+\begin{tabular}{ l l p{6cm} }
+{\tt cata}  &    catamorphism  & folds \\
+{\tt ana}   &    anamorphisms  & unfolds \\
+{\tt hylo}  &    hylomorphism  & {\tt ana} then {\tt cata} \\
+            &                  & (corecursive production followed by recursive consumption) \\
+{\tt para}  &    paramorphism  & {\tt cata} with access to cursor \\
+{\tt apo}   &    apomorphism   & {\tt ana} with early exit \\
+{\tt histo} &    histomorphism & {\tt cata} with access to previous values \\
+{\tt futu}  &    futumorphism  & {\tt ana} with access to future values \\
+{\tt zygo}  &    zygomorphism  & {\tt cata} with helper function \\
+{\tt mutu}  &    mutoomorphism  & {\tt cata} with helper function \\
 \end{tabular}
 
 

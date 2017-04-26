@@ -70,13 +70,13 @@
 \renewcommand{\arraystretch}{1.5}
 
 \begin{tabular}{ l l p{6cm} }
-\textbf{recursion} / \textbf{data}  &      & \textbf{corecursion} / \textbf{codata} \\
+\textbf{recursion} / \textbf{data}  & \textbf{both}     & \textbf{corecursion} / \textbf{codata} \\
 \hline
-cata            &      & ana \\
-                & hylo &  \\
-para (cata++)   &      & apo (ana++) \\
-histo           &      & futu \\
-zygo (para gen) &      &  \\
+cata                                &                   & ana \\
+                                    & hylo              & \\
+para (cata++)                       &                   & apo (ana++) \\
+histo                               &                   & futu \\
+zygo/mutu (para++)                  &                   & \\
 \end{tabular}
 
 ----
@@ -178,16 +178,21 @@ foldr f z (x:xs) = f x (foldr f z xs)
 
 ----
 
-\textbf{recusion as library functions}
---------------------------------------
+\small
 
 \begin{tabular}{ l l p{6cm} }
 {\tt cata}  &    catamorphism  & folds \\
 {\tt ana}   &    anamorphisms  & unfolds \\
 {\tt hylo}  &    hylomorphism  & {\tt ana} then {\tt cata} \\
-            &                  & (corecursive production followed by recursive consumption) \\
+{\tt para}  &    paramorphism  & {\tt cata} with access to cursor \\
+{\tt apo}   &    apomorphism   & {\tt ana} with early exit \\
+{\tt histo} &    histomorphism & {\tt cata} with access to prev values \\
+{\tt futu}  &    futumorphism  & {\tt ana} with access to future values \\
+{\tt zygo}  &    zygomorphism  & {\tt cata} with helper function \\
+{\tt mutu}  &    mutoomorphism  & {\tt cata} with helper function \\
 \end{tabular}
 
+\normalsize
 
 ----
 
@@ -196,12 +201,7 @@ foldr f z (x:xs) = f x (foldr f z xs)
 
 *cata* meaning *downwards* : aka `fold`
 
-- models *iteration*
-- inductive recursion
-    - each recursive step consumes one or more constructors
-- ensures terminates (if given finite input)
-
-----
+- iteration
 
 > cataL :: (a -> b -> b) -> b -> [a] -> b
 > cataL f b (a : as) = f a (cataL f b as)
@@ -226,28 +226,19 @@ foldr f z (x:xs) = f x (foldr f z xs)
 
 > c2 = U.tt "c2" [ filterL  odd [1,2,3]
 >                , filterL' odd [1,2,3]
->                ]
->                [1,3]
-
-----
-
-TODO
-
-other examples:
-
- http://www.cantab.net/users/antoni.diller/haskell/units/unit06.html
+>                ] [1,3]
 
 ------------------------------------------------------------------------------
 
-\textbf{anamorphisms}
+\textbf{anamorphism}
 ---------------------
 
 *ana* meaning *upwards* : aka `unfold`
 
 - corecursive dual of catamorphisms
-- produces structures from a seed
 - corecursion produces (infinite?) *codata*
 - recursion consumes (finite) *data*
+- produces structures from a seed
 
 > anaL  :: (b ->       (a, b)) -> b -> [a]
 > anaL  f b = let (a, b') = f b in a:anaL f b'
@@ -269,8 +260,8 @@ other examples:
 ----
 
 > fibs :: [Integer]
-> fibs = anaL' (\(a,b) -> Just (a,(b,a+b)))
->              (0,1)
+> fibs = anaL (\(a, b) -> (a, (b, a + b)))
+>             (0, 1)
 
 > fib = U.t "fib" (fibs !! 7) 13
 
@@ -323,18 +314,8 @@ example: coinductive streams
 > sFrom1 :: [Integer]
 > sFrom1 = iterateS (+1) 1
 
-> s1s :: [Integer]
-> s1s = iterateS id 1
-
-----
-
-> takeS :: Int -> [a] -> [a]
-> takeS 0     _  = []
-> takeS _    []  = []
-> takeS n (x:xs) = x : takeS (n-1) xs
-
 > tsf = U.t "tsf"
->       (takeS 6 sFrom1)
+>       (take 6 sFrom1)
 >       [1,2,3,4,5,6]
 
 ------------------------------------------------------------------------------
@@ -383,7 +364,7 @@ hyloL f z g = cataL f z . anaL' g
 *para* meaning *beside* (or "parallel with") : extension of catamorphism
 
 - given each element, and
-- current cursor in iteration (e.g., the current tail)
+- current cursor in iteration (e.g., current tail)
 
 > paraL  :: (a -> [a] -> b -> b) -> b
 >        -> [a]
@@ -514,20 +495,20 @@ hyloL f z g = cataL f z . anaL' g
 ----
 
 > data History a b
->   = Zero b | Step a b (History a b)
+>   = End b | Step a b (History a b)
 >     deriving (Eq, Read, Show)
 
 > history :: (a -> History a b -> b)
 >         -> b -> [a] -> History a b
 > history f b = cataL (\a h -> Step a (f a h)h)
->                     (Zero b)
+>                     (End b)
 
-> headH (Zero   b)   = b
-> headH (Step _ b _) = b
+> valH (End    b)   = b
+> valH (Step _ b _) = b
 
 > histoL :: (a -> History a b -> b)
 >        -> b -> [a] -> b
-> histoL f b = headH . history f b
+> histoL f b = valH . history f b
 
 ----
 
@@ -536,7 +517,7 @@ hyloL f z g = cataL f z . anaL' g
 >   (Step 1 "1"
 >           (Step 2 "2"
 >                   (Step 3 "3"
->                           (Zero ""))))
+>                           (End ""))))
 
 ----
 
@@ -547,7 +528,7 @@ hyloL f z g = cataL f z . anaL' g
 
 > fibHL :: Integer -> History Integer Integer
 > fibHL n0 = history f 1 [3..n0] where
->   f _ h = headH h + headH (prevH h)
+>   f _ h = valH h + valH (prevH h)
 
 > tfibHL = U.t "tfibHL"
 >   (fibHL 8)
@@ -557,7 +538,7 @@ hyloL f z g = cataL f z . anaL' g
 >         (Step 6 5
 >           (Step 7 3
 >             (Step 8 2
->               (Zero 1)))))))
+>               (End 1)))))))
 
 
 ------------------------------------------------------------------------------
@@ -590,11 +571,11 @@ hyloL f z g = cataL f z . anaL' g
 >                 )
 
 > exs1 = U.t "exs1"
->        (takeS 10 $ exchL sFrom1)
+>        (take 10 $ exchL sFrom1)
 >        [2,1,4,3,6,5,8,7,10,9]
 
 > exs2 = U.t "exs2"
->        (takeS  9 $ exchL sFrom1)
+>        (take  9 $ exchL sFrom1)
 >        [2,1,4,3,6,5,8,7,10]
 
 ------------------------------------------------------------------------------

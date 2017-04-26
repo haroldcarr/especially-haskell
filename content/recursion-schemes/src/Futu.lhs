@@ -2,7 +2,7 @@
 >
 > module Futu where
 >
-> import           Ana                   (ana', sFrom1, sFrom1L, takeS, takeSL)
+> import           Ana                   (ana', sFrom1, sFrom1L, takeS)
 > import           Control.Arrow         ((|||))
 > import           CtxF
 > import           Data.Functor.Foldable (Fix(..))
@@ -102,20 +102,20 @@ pairwise exchanges elements of stream
 >                 )
 
 > exs1 = U.tt "exs1"
->        [ takeS  10 $ exch  sFrom1
->        , takeSL 10 $ exchL sFrom1L
+>        [ takeS 10 $ exch  sFrom1
+>        , take  10 $ exchL sFrom1L
 >        ]
 >        [2,1,4,3,6,5,8,7,10,9]
 
 > exs2 = U.tt "exs2"
->        [ takeS   9 $ exch  sFrom1
->        , takeSL  9 $ exchL sFrom1L
+>        [ takeS  9 $ exch  sFrom1
+>        , take   9 $ exchL sFrom1L
 >        ]
 >        [2,1,4,3,6,5,8,7,10]
 
 > exs3 = U.tt "exs3"
->        [ takeS   7 $ exch  sFrom1
->        , takeSL  7 $ exchL sFrom1L
+>        [ takeS  7 $ exch  sFrom1
+>        , take   7 $ exchL sFrom1L
 >        ]
 >        [2,1,4,3,6,5,8]
 

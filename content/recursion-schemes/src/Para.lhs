@@ -24,7 +24,7 @@
 - provides access to input arg corresponding to running state of the recursion
 - operates on algebra that provides access to input arg corresponding to running state of the recursion
 - given each element, and
-- current cursor in iteration (e.g., the current tail)
+- current cursor in iteration (e.g., current tail)
 
 > paraL :: (a -> [a] -> b -> b) -> b -> [a] -> b
 > paraL f b (a : as) = f a as (paraL f b as)

@@ -17,16 +17,15 @@
 ------------------------------------------------------------------------------
 definition
 
-\textbf{anamorphisms}
+\textbf{anamorphism}
 ---------------------
 
 *ana* meaning *upwards* : generalized unfold
 
-- corecursive dual of catamorphisms
-- produces streams and other regular structures from a seed
-- dual of catamorphisms / recursion
-- corecursion produces (potentially infinite) *codata*
+- corecursive dual of catamorphisms / recursion
 - recursion consumes (necessarily finite) *data*
+- corecursion produces (potentially infinite) *codata*
+- produces streams and other regular structures from a seed
 - co-inductive co-recursion : each recursive step guarded by a constructor
 - although result can be infinite, each step (a constructor) is produced in finite time (i.e., makes progress)
 
@@ -86,10 +85,16 @@ usage
 -------------------------
 
 > fibs :: [Integer]
-> fibs = anaL' (\(a,b) -> Just (a,(b,a+b)))
->              (0,1)
+> fibs = anaL (\(a, b) -> (a, (b, a + b)))
+>             (0, 1)
 
-> fib = U.t "tf" (fibs !! 7) 13
+> fib = U.t "fib" (fibs !! 7) 13
+
+> fibs' :: [Integer]
+> fibs' = anaL' (\(a, b) -> Just (a, (b, a + b)))
+>              (0, 1)
+
+> fib' = U.t "fib'" (fibs' !! 7) 13
 
 -------------------------
 
@@ -168,23 +173,18 @@ example: coinductive streams
 > takeS 0 _                   = []
 > takeS n (unCofix -> S x xs) = x : takeS (n-1) xs
 
-> takeSL :: Int -> [a] -> [a]
-> takeSL 0     _  = []
-> takeSL _    []  = []
-> takeSL n (x:xs) = x : takeSL (n-1) xs
-
 > ts = U.tt "ts"
->      [ takeS  6 sFrom1
->      , takeSL 6 sFrom1L
+>      [ takeS 6 sFrom1
+>      , take  6 sFrom1L
 >      ]
 >      [1,2,3,4,5,6]
 
 > tss = U.t "tss"
->       (takeSL 6 s1s)
+>       (take  6 s1s)
 >       [1,1,1,1,1,1]
 
 ------------------------------------------------------------------------------
 
 > testAna :: IO Counts
 > testAna  =
->     runTestTT $ TestList $ rep ++ fib ++ lb ++ ml ++ itn ++ ts ++ tss
+>     runTestTT $ TestList $ rep ++ fib ++ fib' ++ lb ++ ml ++ itn ++ ts ++ tss
