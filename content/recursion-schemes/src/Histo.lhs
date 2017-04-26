@@ -80,7 +80,7 @@ example: computing Fibonacci numbers
 ------------------------------------
 
 > fibL :: Integer -> History Integer Integer
-> fibL n0 = history f 1 [0..n0] where
+> fibL n0 = history f 1 [3..n0] where
 >   f 0 _ = 0
 >   f 1 _ = 1
 >   f 2 _ = 1
