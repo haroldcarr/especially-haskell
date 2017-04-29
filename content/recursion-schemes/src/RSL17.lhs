@@ -3,6 +3,9 @@
 > {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 > {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 >
+> {-# LANGUAGE DeriveFoldable         #-}
+> {-# LANGUAGE DeriveFunctor          #-}
+> {-# LANGUAGE DeriveTraversable      #-}
 > {-# LANGUAGE FlexibleContexts       #-}
 > {-# LANGUAGE FlexibleInstances      #-}
 > {-# LANGUAGE MultiParamTypeClasses  #-}
@@ -15,12 +18,12 @@
 > module RSL17 where
 >
 > import           Control.Arrow         (second)
+> import           Data.Functor.Foldable (Fix (..))
+> import           Fixpoint
 > import           Prelude               as P hiding (replicate, succ)
->
-> -- Third-party Hackage packages
->
 > import           Test.HUnit                    (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util               as U (t, tt)
+> import           TreeF                 hiding (et1, ext1)
 >
 > {-# ANN module "HLint: ignore Use foldr" #-}
 > {-# ANN module "HLint: ignore Use sum"   #-}
@@ -30,12 +33,11 @@
 \fi
 
 \begin{center}
-
 \textbf{\LARGE{Refactoring Recursion}}
-
 \Large{Harold Carr}
-
 \end{center}
+
+\normalsize
 
 ----
 
@@ -63,6 +65,19 @@
     - TODO
 - how to generalize to any recursive data
     - `Foldable`, `Traversable`, `Fix`
+
+
+------------------------------------------------------------------------------
+
+\begin{center}
+
+\textbf{\Large{refactoring recursion\\
+out of functions}}
+\end{center}
+
+\normalsize
+
+---------------------
 
 ----
 
@@ -580,19 +595,78 @@ hyloL f z g = cataL f z . anaL' g
 
 ------------------------------------------------------------------------------
 
+\begin{center}
+
+\textbf{\Large{refactoring recursion\\
+out of data}}
+
+\end{center}
+
+----
+
+> data Tree1 a
+>   = Leaf a
+>   | Bin (Tree1 a) (Tree1 a)
+>   deriving (Foldable)
+
+> ext1 = Bin (Bin (Leaf "1") (Leaf "2"))
+>            (Bin (Leaf "3") (Leaf "4"))
+
+> et1 = U.t "et1"
+>       (foldr (++) "" ext1)
+>       "1234"
+
+----
+
+~~~{.haskell}
+data LTreeF a r
+  = LeafF a
+  | BinF r r
+  deriving (Functor)
+~~~
+
+> type Tree a    = Fix (LTreeF a)
+
+~~~{.haskell}
+leaf a  = Fix (LeafF a)
+bin l r = Fix (BinF l r)
+~~~
+
+> ext = bin (bin (leaf "1") (leaf "2"))
+>           (bin (leaf "3") (leaf "4"))
+
+----
+
+> cata :: Functor f => (f a -> a) -> Fix f -> a
+> cata alg = alg . fmap (cata alg) . unFix
+
+> sumT = cata alg where
+>   alg (LeafF a)  = a
+>   alg (BinF l r) = l ++ r
+
+> et = U.t "et"
+>      (sumT ext)
+>      "1234"
+
+------------------------------------------------------------------------------
+
+\textbf{references}
+-------------------
+
+todo
+
+------------------------------------------------------------------------------
+
 \iffalse
 
 > testRSL17 :: IO Counts
 > testRSL17 =
 >   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++ hf ++
->                          p1 ++ sl ++ iel ++ zpm ++ zpm' ++ thistory ++ tfibHL ++ exs1 ++ exs2
+>                          p1 ++ sl ++ iel ++ zpm ++ zpm' ++ thistory ++ tfibHL ++ exs1 ++ exs2 ++
+>                          et1 ++ et
 
 > matchAll :: String -> a
 > matchAll msg = error (msg ++ " match all pattern")
 
 \fi
 
-References
-==========
-
-todo

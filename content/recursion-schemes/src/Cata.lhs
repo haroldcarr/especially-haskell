@@ -10,6 +10,7 @@
 > import           Prelude               hiding (succ)
 > import           Test.HUnit            (Counts, Test (TestList), runTestTT)
 > import qualified Test.HUnit.Util       as U (t, tt)
+> import           TreeF
 
 ------------------------------------------------------------------------------
  http://www.cantab.net/users/antoni.diller/haskell/units/unit06.html
@@ -63,6 +64,17 @@ usage
 >             ""
 >             [1,2,3])
 >      "123"
+
+> ext = bin (bin (leaf "1") (leaf "2"))
+>           (bin (leaf "3") (leaf "4"))
+
+> sumT = cata alg where
+>   alg (LeafF a)  = a
+>   alg (BinF l r) = l ++ r
+
+> et = U.t "et"
+>      (sumT ext)
+>      "1234"
 
 > natToInt :: Nat -> Int
 > natToInt = cata alg where

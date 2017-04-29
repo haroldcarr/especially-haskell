@@ -15,6 +15,7 @@ import           Para
 import           RS
 import           RSL17
 import           Test.HUnit (Counts)
+import           TreeF
 import           Zygo
 
 test :: IO Counts
@@ -31,4 +32,5 @@ test  = do
   testPara
   testRS
   testRSL17
+  testTreeF
   testZygo

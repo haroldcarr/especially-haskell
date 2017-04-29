@@ -112,10 +112,10 @@ use a tree to capture divide / conquer pattern of recursion
 
 > mergeSort :: Ord a => [a] -> [a]
 > mergeSort = hylo alg coalg where
->     alg (Leaf c)    = [c]
->     alg (Bin xs ys) = O.merge xs ys
->     coalg [x]       = Leaf x
->     coalg xs        = Bin l r where
+>     alg (LeafF c)    = [c]
+>     alg (BinF xs ys) = O.merge xs ys
+>     coalg [x]       = LeafF x
+>     coalg xs        = BinF l r where
 >        (l, r)       = splitAt (length xs `div` 2) xs
 
 note the fusion

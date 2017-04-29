@@ -26,19 +26,19 @@ class Foldable t where
 
 example data
 
-> f1 :: Tree Int
-> f1 = B (B (B (L  1)   2 E)
+> f1 :: T' Int
+> f1 = B' (B' (B' (L'  1)   2 E')
 >         3
->         (L  4))
+>         (L'  4))
 >      5
->      E
+>      E'
 
-> f2 :: Tree [Int]
-> f2 = B (B (B (L [1]) [2] E)
+> f2 :: T' [Int]
+> f2 = B' (B' (B' (L' [1]) [2] E')
 >         [3]
->         (L [4]))
+>         (L' [4]))
 >      [5]
->      E
+>      E'
 
 Foldable typeclass operations
 =============================
