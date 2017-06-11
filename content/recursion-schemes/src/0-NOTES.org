@@ -1,4 +1,4 @@
-NEXT: signatures during transitions showing duality
+NEXT: Sync RSL17 -> raw
 THEN: RS : ADVANCED
 
 ------------------------------------------------------------------------------
