@@ -1,5 +1,4 @@
 NEXT: signatures during transitions showing duality
-THEN: finish talk with Foldable and Fix
 THEN: RS : ADVANCED
 
 ------------------------------------------------------------------------------

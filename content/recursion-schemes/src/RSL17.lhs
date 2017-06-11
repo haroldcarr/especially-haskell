@@ -4,8 +4,6 @@
 > {-# OPTIONS_GHC -fno-warn-type-defaults      #-}
 >
 > {-# LANGUAGE DeriveFoldable         #-}
-> {-# LANGUAGE DeriveFunctor          #-}
-> {-# LANGUAGE DeriveTraversable      #-}
 > {-# LANGUAGE FlexibleContexts       #-}
 > {-# LANGUAGE FlexibleInstances      #-}
 > {-# LANGUAGE MultiParamTypeClasses  #-}
@@ -21,14 +19,16 @@
 > import           Data.Functor.Foldable (Fix (..))
 > import           Fixpoint
 > import           Prelude               as P hiding (replicate, succ)
-> import           Test.HUnit                    (Counts, Test (TestList), runTestTT)
-> import qualified Test.HUnit.Util               as U (t, tt)
+> import           Test.HUnit            (Counts, Test (TestList), runTestTT)
+> import qualified Test.HUnit.Util       as U (t, tt)
 > import           TreeF                 hiding (et1, ext1)
 >
 > {-# ANN module "HLint: ignore Use foldr" #-}
 > {-# ANN module "HLint: ignore Use sum"   #-}
 > {-# ANN module "HLint: ignore Use and"   #-}
+> {-# ANN hyloL' "HLint: ignore Eta reduce"  #-}
 > {-# ANN fact "HLint: ignore Eta reduce"  #-}
+> {-# ANN et1 "HLint: ignore Use concat"  #-}
 
 \fi
 
@@ -57,29 +57,19 @@
 -----------------
 
 - explicit recursive functions
-- factor recursion out of functions with `fold`
-- use library functions to operate lists
-    - folds : "catamorphism"
-    - unfolds : "anamorphism"
-    - unfolds followed by folds : "hylomorphism"
-    - TODO
-- how to generalize to any recursive data
+- factor recursion out of \textbf{functions} with `fold`
+- library functions to do recursion
+    - folds : apply function to every element
+    - unfolds : create structure from seed
+    - unfolds followed by folds
+    - (un)fold with early exit
+    - ...
+- factor recursion out of \textbf{data} with
     - `Foldable`, `Traversable`, `Fix`
 
-
-------------------------------------------------------------------------------
-
-\begin{center}
-
-\textbf{\Large{refactoring recursion\\
-out of functions}}
-\end{center}
-
-\normalsize
-
----------------------
-
 ----
+
+\small
 
 \setlength{\tabcolsep}{8pt}
 \renewcommand{\arraystretch}{1.5}
@@ -93,6 +83,18 @@ para (cata++)                       &                   & apo (ana++) \\
 histo                               &                   & futu \\
 zygo/mutu (para++)                  &                   & \\
 \end{tabular}
+
+\normalsize
+
+------------------------------------------------------------------------------
+
+\begin{center}
+
+\textbf{\Large{refactoring recursion\\
+out of functions}}
+\end{center}
+
+\normalsize
 
 ----
 
@@ -151,10 +153,6 @@ same recursive structure, except
 
 > lengthF        = foldr  (\_ n -> 1 + n)  0
 
-~~~{.haskell}
-lengthFL       = foldl' (const . P.succ) 0
-~~~
-
 \footnotesize
 
 ~~~{.haskell}
@@ -171,8 +169,6 @@ lengthFL       = foldl' (const . P.succ) 0
 \normalsize
 
 ----
-
-\textbf{`foldr` operation}
 
 ~~~{.haskell}
 foldr :: (a -> b -> b) -> b -> [a] -> b
@@ -204,7 +200,7 @@ foldr f z (x:xs) = f x (foldr f z xs)
 {\tt histo} &    histomorphism & {\tt cata} with access to prev values \\
 {\tt futu}  &    futumorphism  & {\tt ana} with access to future values \\
 {\tt zygo}  &    zygomorphism  & {\tt cata} with helper function \\
-{\tt mutu}  &    mutoomorphism  & {\tt cata} with helper function \\
+{\tt mutu}  &    mutumorphism  & {\tt cata} with helper function \\
 \end{tabular}
 
 \normalsize
@@ -228,15 +224,28 @@ foldr f z (x:xs) = f x (foldr f z xs)
 
 ----
 
+> cd = U.t "cd"
+>      (cataL (\a b -> read a + b)
+>             0.0
+>             ["1.1", "2.2", "3.3"])
+>      6.6
+
+----
+
 > filterL  :: (a -> Bool) -> [a] -> [a]
 > filterL p  =
->   cataL (\x acc -> if p x then x : acc
->                           else acc)
+>   cataL (\a as -> if p a then a : as
+>                          else     as)
 >         []
 
+\iffalse
+
 > filterL' :: (a -> Bool) -> [a] -> [a]
+
+\fi
+
 > filterL' p = cataL alg [] where
->   alg x | p x       = (x :)
+>   alg a | p a       = (a :)
 >         | otherwise = id
 
 > c2 = U.tt "c2" [ filterL  odd [1,2,3]
@@ -251,9 +260,9 @@ foldr f z (x:xs) = f x (foldr f z xs)
 *ana* meaning *upwards* : aka `unfold`
 
 - corecursive dual of catamorphisms
-- corecursion produces (infinite?) *codata*
-- recursion consumes (finite) *data*
 - produces structures from a seed
+- corecursion produces (infinite?) *codata*
+    - (recursion consumes finite *data*)
 
 > anaL  :: (b ->       (a, b)) -> b -> [a]
 > anaL  f b = let (a, b') = f b in a:anaL f b'
@@ -266,9 +275,9 @@ foldr f z (x:xs) = f x (foldr f z xs)
 ----
 
 > replicate :: Int -> a -> [a]
-> replicate n0 x = anaL' c n0 where
->   c 0 = Nothing
->   c n = Just (x, n-1)
+> replicate n0 x = anaL' coalg n0 where
+>   coalg 0 = Nothing
+>   coalg n = Just (x, n-1)
 
 > rep = U.t "rep" (replicate 4 '*') "****"
 
@@ -293,6 +302,18 @@ foldr f z (x:xs) = f x (foldr f z xs)
 
 ----
 
+~~~{.haskell}
+break (==',') "foo,bar,baz"
+=> ("foo",",bar,baz")
+
+
+second (drop 1) ("foo",",bar,baz")
+=> ("foo","bar,baz")
+~~~
+
+
+----
+
 example: merging lists
 ----------------------
 
@@ -300,15 +321,26 @@ given 2 sorted, produce 1 sorted list
 
 \small
 
-> mergeLists :: forall a. Ord a => [a] -> [a] -> [a]
+> mergeLists :: Ord a => [a] -> [a] -> [a]
 > mergeLists = curry $ anaL' c where
+
+\iffalse
+
 >   c :: Ord a => ([a], [a]) -> Maybe (a, ([a], [a]))
+
+\fi
+
 >   c (  [],   [])          = Nothing
 >   c (  [], y:ys)          = Just (y, (  [],   ys))
 >   c (x:xs,   [])          = Just (x, (  xs,   []))
 >   c (x:xs, y:ys) | x <= y = Just (x, (  xs, y:ys))
 >                  | x >  y = Just (y, (x:xs,   ys))
+
+\iffalse
+
 >   c (_:_ , _:_)           = matchAll "mergeLists"
+
+\fi
 
 > ml = U.t "ml"
 >      (mergeLists [1,4] [2,3,5])
@@ -343,18 +375,20 @@ composition of catamorphism and anamorphism
 - corecursive codata production
 - followed by recursive data consumption
 
-> hyloL :: (a -> c -> c)       -> c
->       -> (b -> Maybe (a, b)) -> b
->       -> c
+> hyloL :: (a -> c -> c)       -- cata f
+>       -> c                   -- cata zero
+>       -> (b -> Maybe (a, b)) -- ana g
+>       -> b                   -- ana seed
+>       -> c                   -- result
 > hyloL f c g = cataL f c . anaL' g
 
 ----
 
 > fact :: Integer -> Integer
-> fact n0 = hyloL' c 1 a n0 where
->   a 0 = Nothing
->   a n = Just (n, n - 1)
->   c   = (*)
+> fact n0 = hyloL' a 1 c n0 where
+>   c 0 = Nothing
+>   c n = Just (n, n - 1)
+>   a   = (*)
 
 > hf = U.t "hf" (fact 5) 120
 
@@ -363,10 +397,10 @@ composition of catamorphism and anamorphism
 \textbf{fusion/deforestation}
 
 ~~~{.haskell}
-hyloL f z g = cataL f z . anaL' g
+hyloL f c g b = cataL f c . anaL' g b
 ~~~
 
-> hyloL' f a g = h where
+> hyloL' f a g b0 = h b0 where
 >   h b = case g b of
 >     Nothing       -> a
 >     Just (a', b') -> f a' (h b')
@@ -376,14 +410,17 @@ hyloL f z g = cataL f z . anaL' g
 \textbf{paramorphism}
 ---------------------
 
-*para* meaning *beside* (or "parallel with") : extension of catamorphism
+*para* meaning *beside* (or "parallel with")
+
+extension of catamorphism
 
 - given each element, and
 - current cursor in iteration (e.g., current tail)
 
-> paraL  :: (a -> [a] -> b -> b) -> b
->        -> [a]
->        -> b
+> paraL  :: (a -> [a] -> b -> b) -- f
+>        -> b                    -- zero
+>        -> [a]                  -- input
+>        -> b                    -- output
 > paraL  f b  (a : as) = f a as (paraL f b as)
 > paraL  _ b       []  = b
 
@@ -416,7 +453,7 @@ hyloL f z g = cataL f z . anaL' g
 *apo* meaning *apart*
 
 - dual of paramorphism
-- extension anamorphism
+- extension of anamorphism
 - enables short-circuiting traversal
 
 > apoL :: ([b] -> Maybe (a, Either [b] [a]))
@@ -433,10 +470,10 @@ hyloL f z g = cataL f z . anaL' g
 
 > insertElemL :: Ord a => a -> [a] -> [a]
 > insertElemL a as = apoL c (a:as) where
->   c      []           = Nothing
->   c     [x]           = Just (x, Left     [])
->   c (x:y:xs) | x <= y = Just (x, Right (y:xs)) -- DONE
->              | x >  y = Just (y, Left  (x:xs))
+>   c      []         = Nothing
+>   c     [x]         = Just (x, Left     [])
+>   c (x:y:xs) | x<=y = Just (x, Right (y:xs)) -- DONE
+>              | x> y = Just (y, Left  (x:xs))
 
 \iffalse
 
@@ -463,7 +500,7 @@ hyloL f z g = cataL f z . anaL' g
 \small
 
 > zygoL :: (a -> b -> b)      -- f
->       -> (a -> b -> c -> c) -- g depends on f
+>       -> (a -> b -> c -> c) -- g depends on f result
 >       -> b -> c             -- zeroes
 >       -> [a]                -- input
 >       -> c                  -- result
@@ -505,7 +542,7 @@ hyloL f z g = cataL f z . anaL' g
 ----------------------
 
 - gives access to previously computed values
-- moves bottom-up annotating tree with results
+- moves bottom-up annotating stack with results
 
 ----
 
@@ -528,7 +565,7 @@ hyloL f z g = cataL f z . anaL' g
 ----
 
 > thistory = U.t "thistory"
->   (history (\a _ -> (show a)) "" [1,2,3])
+>   (history (\a _ -> show a) "" [1,2,3])
 >   (Step 1 "1"
 >           (Step 2 "2"
 >                   (Step 3 "3"
@@ -542,7 +579,7 @@ hyloL f z g = cataL f z . anaL' g
 ----
 
 > fibHL :: Integer -> History Integer Integer
-> fibHL n0 = history f 1 [3..n0] where
+> fibHL n = history f 1 [3..n] where
 >   f _ h = valH h + valH (prevH h)
 
 > tfibHL = U.t "tfibHL"
@@ -579,9 +616,9 @@ hyloL f z g = cataL f z . anaL' g
 ----
 
 > exchL = futuL coa where
->   coa xs = Just ( head (tail xs),
->                   ( [head xs],
->                     Just (tail (tail xs))
+>   coa xs = Just ( head (tail xs)
+>                 , ( [head xs]
+>                   , Just (tail (tail xs))
 >                   )
 >                 )
 
@@ -653,15 +690,30 @@ bin l r = Fix (BinF l r)
 \textbf{references}
 -------------------
 
-todo
+\small
 
-------------------------------------------------------------------------------
+Tim Williams' recursion schemes presentation
+
+    - http://www.timphilipwilliams.com/slides.html
+    - https://www.youtube.com/watch?v=Zw9KeP3OzpU
+
+Functional Programming with Bananas, Lenses, Envelopes and Barbed Wire
+
+    - https://maartenfokkinga.github.io/utwente/mmf91m.pdf
+
+These slides
+
+    - https://github.com/haroldcarr/presentations/
+      blob/master/2017-05-27-lambdaconf-recursion-schemes
+      .pdf
+
+\normalsize
 
 \iffalse
 
 > testRSL17 :: IO Counts
 > testRSL17 =
->   runTestTT $ TestList $ c1 ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++ hf ++
+>   runTestTT $ TestList $ c1 ++ cd ++ c2 ++ rep ++ fib ++ lb ++ ml ++ tsf ++ hf ++
 >                          p1 ++ sl ++ iel ++ zpm ++ zpm' ++ thistory ++ tfibHL ++ exs1 ++ exs2 ++
 >                          et1 ++ et
 
