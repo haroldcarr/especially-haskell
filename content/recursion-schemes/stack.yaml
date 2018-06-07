@@ -1,6 +1,7 @@
-flags: {}
+resolver: lts-11.12
 packages:
 - '.'
 - '../../../test-hunit-util'
-extra-deps: [ recursion-schemes-4.1.2 ]
-resolver: lts-6.7
+extra-deps:
+- bool-extras-0.4.0
+# flags: {}

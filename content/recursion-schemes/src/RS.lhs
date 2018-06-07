@@ -65,6 +65,7 @@ Overview
 > import           Control.Monad.Reader  (ReaderT, ask, fix, lift, runReaderT, (<=<))
 > import           Control.Monad.ST      (ST, runST)
 > import           Data.Foldable         (fold)
+> import           Data.Functor.Classes  (Eq1(..), Show1(..), showsUnaryWith)
 > import           Data.Functor.Foldable (Fix(..))
 > import           Data.Functor.Identity as DFI (Identity (..))
 > import           Data.List.Ordered     as O (merge)
@@ -1375,6 +1376,29 @@ example: expressions
 >              | IfNeg r r r
 >                deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+> instance Eq1 ExprF where
+>   liftEq _  (Const il)       (Const ir)       = il == ir
+>   liftEq _  (Const  _)        _               = False
+>   liftEq _           _       (Const  _)       = False
+>   liftEq _  (Var il)         (Var ir)         = il == ir
+>   liftEq _  (Var  _)          _               = False
+>   liftEq _           _       (Var  _)         = False
+>   liftEq eq (Add l1 l2)      (Add r1 r2)      = eq l1 r1 && eq l2 r2
+>   liftEq _  (Add  _  _)       _               = False
+>   liftEq _           _       (Add  _  _)      = False
+>   liftEq eq (Mul l1 l2)      (Mul r1 r2)      = eq l1 r1 && eq l2 r2
+>   liftEq _  (Mul  _  _)       _               = False
+>   liftEq _                _  (Mul  _  _)      = False
+>   liftEq eq (IfNeg l1 l2 l3) (IfNeg r1 r2 r3) = eq l1 r1 && eq l2 r2 && eq l3 r3
+
+> -- TODO
+> instance Show1 ExprF where
+>   liftShowsPrec _  _ _  (Const _)     = showString "Const"
+>   liftShowsPrec _  _ _  (Var   _)     = showString "Var"
+>   liftShowsPrec _  _ _  (Add   _ _)   = showString "Add"
+>   liftShowsPrec _  _ _  (Mul   _ _)   = showString "Mul"
+>   liftShowsPrec _  _ _  (IfNeg _ _ _) = showString "IfNeg"
+
 > type Id = String
 
 > type Expr = Fix ExprF
@@ -1901,11 +1925,13 @@ memoize :: Enumerable k => (k -> v) -> k -> v
 
 - a (transparent) memoizing catamorphism
 
+> {-
 > memoCata :: (Eq (f (Fix f)), Traversable f,
 >             Hashable (Fix f)) =>
 >             (f a -> a) -> Fix f -> a
 > memoCata f x = runMemo $
 >   memoFix (\rec -> fmap f . mapM rec . unFix) x
+> -}
 
 **WARNING** this could result in a slowdown unless your algebra is significantly more expensive than a hash computation!
 
@@ -2119,3 +2145,29 @@ Tim Williams's recursion schemes presentation
 
 
 [FD] https://wiki.haskell.org/Functional_dependencies
+
+------------------------------------------------------------------------------
+-- TODO : from NatF.lhs
+
+> instance Eq1 NatF where
+>   liftEq _   ZeroF     ZeroF    = True
+>   liftEq _   ZeroF    (SuccF _) = False
+>   liftEq _  (SuccF _)  ZeroF    = False
+>   liftEq eq (SuccF l) (SuccF r) = eq l r
+
+> instance Show1 NatF where
+>   liftShowsPrec _  _ _  ZeroF    = showString "ZeroF"
+>   liftShowsPrec sp _ d (SuccF n) = showsUnaryWith sp "SuccF" d n
+
+------------------------------------------------------------------------------
+-- TODO : from ListF.lhs
+
+> instance Eq a => Eq1 (ListF a) where
+>   liftEq _   N          N        = True
+>   liftEq _  (C _ _)     N        = False
+>   liftEq _   N         (C _   _) = False
+>   liftEq eq (C al rl)  (C ar rr) = al == ar && eq rl rr
+
+> instance Show1 (ListF a) where
+>   liftShowsPrec _  _ _  N      = showString "N"
+>   liftShowsPrec sp _ d (C _a r) = showsUnaryWith sp "C" d r -- TODO missing a

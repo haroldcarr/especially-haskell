@@ -6,6 +6,7 @@
 >
 > module NatF where
 >
+> import           Data.Functor.Classes  (Eq1(..), Show1(..), showsUnaryWith)
 > import           Data.Functor.Foldable (Fix(..))
 > import           Fixpoint
 > import           Prelude               hiding (succ)
@@ -29,6 +30,16 @@ factor out recursion by defining base structure
 >   inF (SuccF n)      = n + 1
 >   outF n | n > 0     = SuccF (n - 1)
 >          | otherwise = ZeroF
+
+> instance Eq1 NatF where
+>   liftEq _   ZeroF     ZeroF    = True
+>   liftEq _   ZeroF    (SuccF _) = False
+>   liftEq _  (SuccF _)  ZeroF    = False
+>   liftEq eq (SuccF l) (SuccF r) = eq l r
+
+> instance Show1 NatF where
+>   liftShowsPrec _  _ _  ZeroF    = showString "ZeroF"
+>   liftShowsPrec sp _ d (SuccF n) = showsUnaryWith sp "SuccF" d n
 
 > infz = U.t "infz" (inF ZeroF     :: Integer) 0
 > infs = U.t "infs" (inF (SuccF 0) :: Integer) 1

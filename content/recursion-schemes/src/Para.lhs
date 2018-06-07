@@ -117,8 +117,8 @@ usage
 >     alg (C _ (_, l)) = l
 
 > tl = U.t "tl"
->      (tailL (cons 1 (cons 2 nil)))
->                     (cons 2 nil)
+>      (tailL (cons 1 (cons (2::Int) nil)))
+>                     (cons 2        nil)
 
 ----
 
