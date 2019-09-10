@@ -1,3 +1,4 @@
 .stack-work
+stack.yaml.lock
 .generated
 2017-lambda-conf-interview.org

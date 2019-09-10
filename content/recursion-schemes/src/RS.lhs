@@ -88,7 +88,7 @@ Overview
 > import           Text.Parsec.Prim              (ParsecT)
 > import           Text.ParserCombinators.Parsec hiding (many, space, (<|>))
 > import           Text.PrettyPrint.Leijen       (Doc, Pretty, pretty, space, text, (<+>))
-> import qualified Text.PrettyPrint.Leijen       as PP (brackets, (<>))
+> import qualified Text.PrettyPrint.Leijen       as PP (brackets, parens, (<>))
 >
 > {-# ANN module "HLint: ignore Use foldr" #-}
 > {-# ANN module "HLint: ignore Use sum"   #-}
@@ -1830,6 +1830,23 @@ For example, the `depths` function computes the depth of all subtrees:
 
 > depths :: Functor f => Fix f -> Ann f Int
 > depths = inherit (const (+1)) 0
+
+> ppr :: Expr -> Doc
+> ppr = cata pprAlg
+>
+> pprAlg :: ExprF Doc -> Doc
+> pprAlg (Const c)     = text $ show c
+> pprAlg (Var  i)      = text i
+> pprAlg (Add x y)     = PP.parens $ x <+> text "+" <+> y
+> pprAlg (Mul x y)     = PP.parens $ x <+> text "*" <+> y
+> pprAlg (IfNeg t x y) = PP.parens $ text "ifNeg"   <+> t
+>                         <+> text "then" <+> x
+>                         <+> text "else" <+> y
+>
+> pprAnn :: Pretty a => Ann ExprF a -> Doc
+> pprAnn = cata alg where
+>   alg (AnnF (d, a)) = pprAlg d <+>
+>                       text "@" <+> pretty a
 
 ~~~
  > pprAnn $ depths e1

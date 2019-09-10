@@ -1,7 +1,8 @@
-resolver: lts-11.12
+resolver: lts-13.25
 packages:
 - '.'
 - '../../../test-hunit-util'
 extra-deps:
-- bool-extras-0.4.0
+- bool-extras-0.4.0@sha256:4d46de500f0a86e9c87f19b300485bf8721bf6eced801a43ca122137fa177273,1689
+- wl-pprint-1.2.1@sha256:aea676cff4a062d7d912149d270e33f5bb0c01b68a9db46ff13b438141ff4b7c,734
 # flags: {}
